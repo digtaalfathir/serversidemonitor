@@ -1,0 +1,36 @@
+[2026-06-05 08:38:05] WebSocket server initialized on path: /ws
+[2026-06-05 08:38:05] Monitor engine started — 8 devices, interval: 3000ms
+[2026-06-05 08:38:05] ========================================
+[2026-06-05 08:38:05]   Hardware Monitoring System v2.0.0
+[2026-06-05 08:38:05]   HTTP  : http://localhost:3000
+[2026-06-05 08:38:05]   WS    : ws://localhost:3000/ws
+[2026-06-05 08:38:05]   API   : http://localhost:3000/api/status
+[2026-06-05 08:38:05]   Health: http://localhost:3000/health
+[2026-06-05 08:38:05] ========================================
+[2026-06-05 08:38:06] ALERT: IOT NODE 001 (172.19.88.17) -> DOWN (started at 2026-06-05 08:38:06)
+[2026-06-05 08:38:06] ALERT: Printer M#5 (172.19.88.21) -> DOWN (started at 2026-06-05 08:38:06)
+[2026-06-05 08:38:06] ALERT: DCS MIXING MATERIAL F4 (172.19.88.30) -> DOWN (started at 2026-06-05 08:38:06)
+[2026-06-05 08:38:06] ALERT: DCS PLAYMAKER F4 (172.19.88.16) -> DOWN (started at 2026-06-05 08:38:06)
+[2026-06-05 08:38:06] ALERT: DCS QI F4 (172.19.88.19) -> DOWN (started at 2026-06-05 08:38:06)
+[2026-06-05 08:38:06] ALERT: DCS REPAIR IN LINE F4 (172.19.88.20) -> DOWN (started at 2026-06-05 08:38:06)
+[2026-06-05 08:38:06] ALERT: DCS POLES F4 (172.19.88.29) -> DOWN (started at 2026-06-05 08:38:06)
+[2026-06-05 08:38:06] ALERT: DCS TASK FORCE F4 (172.19.88.24) -> DOWN (started at 2026-06-05 08:38:06)
+[2026-06-05 08:39:00] WebSocket client connected from ::1
+[2026-06-05 09:47:48] WebSocket server initialized on path: /ws
+[2026-06-05 09:47:48] Monitor engine started — 8 devices, interval: 3000ms
+[2026-06-05 09:47:48]   HTTP  : http://localhost:3000
+[2026-06-05 09:47:48]   WS    : ws://localhost:3000/ws
+[2026-06-05 09:47:48]   Health: http://localhost:3000/health
+[2026-06-05 09:47:48] ========================================
+[2026-06-05 09:47:48] ========================================
+[2026-06-05 09:47:48]   Hardware Monitoring System v2.0.0
+[2026-06-05 09:47:48]   API   : http://localhost:3000/api/status
+[2026-06-05 09:48:02] WebSocket client connected from ::1
+[2026-06-05 09:48:19] Received SIGINT. Shutting down gracefully...
+[2026-06-05 09:48:19] Monitor engine stopped gracefully.
+[2026-06-05 09:48:22] Received SIGINT. Shutting down gracefully...
+[2026-06-05 09:48:22] Monitor engine stopped gracefully.
+[2026-06-05 09:48:23] Received SIGINT. Shutting down gracefully...
+[2026-06-05 09:48:23] Monitor engine stopped gracefully.
+[2026-06-05 09:48:24] Received SIGINT. Shutting down gracefully...
+[2026-06-05 09:48:24] Monitor engine stopped gracefully.

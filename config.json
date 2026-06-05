@@ -1,0 +1,12 @@
+{
+  "webPort": 10101,
+  "wsPath": "/ws",
+  "monitorInterval": 3000,
+  "timezone": "Asia/Jakarta",
+  "logDir": "logs",
+  "dataDir": "data",
+  "publicDir": "public",
+  "latencyWindowSize": 20,
+  "historyMaxAgeMs": 86400000,
+  "pingTimeout": 1
+}
