@@ -136,6 +136,20 @@
   </div>
 
   <div id="toast"></div>
+  <script>
+    // Backstop: if the module never finishes init (parse/link failure), tell the user where to look.
+    window.addEventListener("load", function () {
+      setTimeout(function () {
+        if (!window.__sbReady && !document.getElementById("fatal")) {
+          var v = document.getElementById("view") || document.body;
+          var d = document.createElement("div");
+          d.style.cssText = "position:absolute;inset:0;z-index:99;background:rgba(10,14,26,.96);color:#fca5a5;padding:22px;font:13px/1.6 ui-monospace,monospace;white-space:pre-wrap";
+          d.textContent = "Scene Builder tidak selesai init dalam 5 detik.\n\nBuka Console browser (F12 → Console) dan kirim baris error MERAH pertama ke saya.";
+          v.appendChild(d);
+        }
+      }, 5000);
+    });
+  </script>
   <script type="module" src="/js/scene-builder.js"></script>
 </body>
 </html>

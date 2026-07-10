@@ -50,10 +50,33 @@ let floorStart = null, floorPreview = null;
 const r3 = (n) => Math.round(n * 1000) / 1000;
 
 // =====================================================================
-init();
+window.addEventListener("error", (e) => {
+  if (e.target && e.target !== window) return;   // ignore resource-load errors (fonts, etc.)
+  showFatal((e.error && e.error.stack) || e.message || "unknown error");
+});
+window.addEventListener("unhandledrejection", (e) => showFatal("Promise: " + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason)));
+try {
+  init();
+  window.__sbReady = true;
+} catch (err) {
+  showFatal((err && err.stack) || String(err));
+}
+
+function showFatal(msg) {
+  console.error("[SceneBuilder]", msg);
+  let el = document.getElementById("fatal");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "fatal";
+    el.style.cssText = "position:absolute;inset:0;z-index:99;background:rgba(10,14,26,0.96);color:#fca5a5;" +
+      "padding:22px;font:12px/1.6 ui-monospace,monospace;overflow:auto;white-space:pre-wrap;";
+    (document.getElementById("view") || document.body).appendChild(el);
+  }
+  el.textContent = "⚠️ Scene Builder error (kirim teks ini ke saya):\n\n" + msg;
+}
 
 function init() {
-  const w = view.clientWidth, h = view.clientHeight;
+  const w = view.clientWidth || 800, h = view.clientHeight || 600;
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x080b14);
   scene.fog = new THREE.Fog(0x080b14, 120, 400);
@@ -68,8 +91,12 @@ function init() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  // Environment map (optional — skip gracefully if it fails on some GPUs)
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
+  } catch (e) { console.warn("[SceneBuilder] environment map dilewati:", e); }
 
   controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
@@ -77,14 +104,17 @@ function init() {
   controls.maxPolarAngle = Math.PI * 0.495;
   controls.target.set(0, 1, 0);
 
-  transform = new TransformControls(camera, canvas);
-  transform.setTranslationSnap(0.5);
-  transform.setRotationSnap(THREE.MathUtils.degToRad(15));
-  transform.addEventListener("dragging-changed", (e) => {
-    draggingGizmo = e.value;
-    controls.enabled = !e.value;
-  });
-  scene.add(transform.getHelper());
+  // Transform gizmo (optional — editor still usable without it)
+  try {
+    transform = new TransformControls(camera, canvas);
+    transform.setTranslationSnap(0.5);
+    transform.setRotationSnap(THREE.MathUtils.degToRad(15));
+    transform.addEventListener("dragging-changed", (e) => {
+      draggingGizmo = e.value;
+      controls.enabled = !e.value;
+    });
+    scene.add(transform.getHelper());
+  } catch (e) { console.warn("[SceneBuilder] TransformControls dilewati:", e); transform = null; }
 
   // lights
   hemi = new THREE.HemisphereLight(0x9fb4d8, 0x0a0e1a, lighting.ambient);
@@ -96,6 +126,7 @@ function init() {
   keyLight.shadow.normalBias = 0.6;
   const sc = keyLight.shadow.camera;
   sc.left = -40; sc.right = 40; sc.top = 40; sc.bottom = -40; sc.near = 1; sc.far = 200;
+  sc.updateProjectionMatrix();
   scene.add(hemi, amb, keyLight);
 
   // ground + grid
@@ -112,13 +143,14 @@ function init() {
   grid.material.transparent = true; grid.material.opacity = 0.5;
   scene.add(grid);
 
-  // post-processing
-  composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
-  bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), lighting.bloom.strength, lighting.bloom.radius, lighting.bloom.threshold);
-  composer.addPass(bloomPass);
-  composer.addPass(new OutputPass());
-  pmrem.dispose();
+  // post-processing / bloom (optional — falls back to plain render if it fails)
+  try {
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), lighting.bloom.strength, lighting.bloom.radius, lighting.bloom.threshold);
+    composer.addPass(bloomPass);
+    composer.addPass(new OutputPass());
+  } catch (e) { console.warn("[SceneBuilder] bloom dilewati:", e); composer = null; bloomPass = null; }
 
   applyLighting();
   bindUI();
@@ -132,13 +164,13 @@ function init() {
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
-  composer.render();
+  if (composer) composer.render(); else renderer.render(scene, camera);
 }
 
 function onResize() {
   const w = view.clientWidth, h = view.clientHeight;
   camera.aspect = w / h; camera.updateProjectionMatrix();
-  renderer.setSize(w, h); composer.setSize(w, h);
+  renderer.setSize(w, h); if (composer) composer.setSize(w, h);
 }
 
 // =====================================================================
@@ -153,9 +185,11 @@ function applyLighting() {
   keyLight.intensity = lighting.sunIntensity;
   hemi.intensity = lighting.ambient;
   amb.intensity = lighting.ambient * 0.5;
-  bloomPass.strength = lighting.bloom.strength;
-  bloomPass.threshold = lighting.bloom.threshold;
-  bloomPass.radius = lighting.bloom.radius;
+  if (bloomPass) {
+    bloomPass.strength = lighting.bloom.strength;
+    bloomPass.threshold = lighting.bloom.threshold;
+    bloomPass.radius = lighting.bloom.radius;
+  }
 }
 
 // =====================================================================
@@ -166,7 +200,7 @@ function setMode(m) {
   cancelWall(); cancelFloor();
   mode = m;
   document.querySelectorAll(".btn.mode").forEach((b) => b.classList.toggle("active", b.dataset.mode === m));
-  if (m !== "select") { transform.detach(); selected = null; }
+  if (m !== "select") { transform?.detach(); selected = null; }
   $("statMode").innerHTML = `Mode: <b>${MODE_LABEL[m]}</b>`;
   updateInspector();
   setTip();
@@ -258,7 +292,7 @@ function addObject(type, obj, data) {
 }
 function removeRecord(rec) {
   if (!rec) return;
-  if (selected === rec) { transform.detach(); selected = null; }
+  if (selected === rec) { transform?.detach(); selected = null; }
   scene.remove(rec.obj);
   objects = objects.filter((o) => o !== rec);
   delete byId[rec.id];
@@ -266,8 +300,8 @@ function removeRecord(rec) {
 }
 function select(rec) {
   selected = rec;
-  transform.detach();
-  if (rec && (rec.type === "model" || rec.type === "pin")) transform.attach(rec.obj);
+  transform?.detach();
+  if (transform && rec && (rec.type === "model" || rec.type === "pin")) transform.attach(rec.obj);
   updateInspector();
   refreshList();
   if (rec) $("statCoords").textContent = `Terpilih: ${rec.data.name || rec.type}  (Delete = hapus)`;
@@ -540,7 +574,7 @@ $("btnNew").onclick = () => { if (confirm("Kosongkan scene?")) clearAll(); };
 function clearAll() {
   objects.slice().forEach((o) => scene.remove(o.obj));
   objects = []; for (const k in byId) delete byId[k];
-  transform.detach(); selected = null;
+  transform?.detach(); selected = null;
   refreshList(); updateInspector();
 }
 function loadSceneJSON(s) {
@@ -577,7 +611,7 @@ function bindUI() {
   $("modelPath").oninput = () => { if (selected && selected.type === "model") selected.data.url = $("modelPath").value; };
   $("modelIp").oninput = () => { if (selected && selected.type === "model") selected.data.deviceIp = $("modelIp").value; };
   document.querySelectorAll(".tmodes .btn").forEach((b) => (b.onclick = () => {
-    transform.setMode(b.dataset.tm);
+    transform?.setMode(b.dataset.tm);
     document.querySelectorAll(".tmodes .btn").forEach((x) => x.classList.toggle("active", x === b));
   }));
 

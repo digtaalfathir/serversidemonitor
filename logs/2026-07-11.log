@@ -39,3 +39,12 @@
 [2026-07-11 00:22:49]   API   : http://localhost:10101/api/status
 [2026-07-11 00:22:49]   Health: http://localhost:10101/health
 [2026-07-11 00:22:49] ========================================
+[2026-07-11 00:51:52] WebSocket server initialized on path: /ws
+[2026-07-11 00:51:52] Monitor engine started — 8 devices, interval: 3000ms
+[2026-07-11 00:51:52] ========================================
+[2026-07-11 00:51:52]   Hardware Monitoring System v2.0.0
+[2026-07-11 00:51:52]   HTTP  : http://localhost:10101
+[2026-07-11 00:51:52]   WS    : ws://localhost:10101/ws
+[2026-07-11 00:51:52]   API   : http://localhost:10101/api/status
+[2026-07-11 00:51:52]   Health: http://localhost:10101/health
+[2026-07-11 00:51:52] ========================================
