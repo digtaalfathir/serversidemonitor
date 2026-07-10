@@ -1,0 +1,32 @@
+[2026-07-10 21:44:00] WebSocket server initialized on path: /ws
+[2026-07-10 21:44:00] Monitor engine started — 8 devices, interval: 3000ms
+[2026-07-10 21:44:00]   Hardware Monitoring System v2.0.0
+[2026-07-10 21:44:00] ========================================
+[2026-07-10 21:44:00]   HTTP  : http://localhost:10101
+[2026-07-10 21:44:00]   WS    : ws://localhost:10101/ws
+[2026-07-10 21:44:00]   API   : http://localhost:10101/api/status
+[2026-07-10 21:44:00]   Health: http://localhost:10101/health
+[2026-07-10 21:44:00] ========================================
+[2026-07-10 21:44:01] DAILY RESET: statistik hari 2026-06-05 direset untuk hari baru 2026-07-10
+[2026-07-10 21:44:21] WebSocket client connected from ::1
+[2026-07-10 21:44:48] Received SIGINT. Shutting down gracefully...
+[2026-07-10 21:44:48] Monitor engine stopped gracefully.
+[2026-07-10 22:09:58] WebSocket server initialized on path: /ws
+[2026-07-10 22:09:58] Monitor engine started — 8 devices, interval: 3000ms
+[2026-07-10 22:09:58]   HTTP  : http://localhost:10101
+[2026-07-10 22:09:58]   WS    : ws://localhost:10101/ws
+[2026-07-10 22:09:58]   API   : http://localhost:10101/api/status
+[2026-07-10 22:09:58]   Health: http://localhost:10101/health
+[2026-07-10 22:09:58] ========================================
+[2026-07-10 22:09:58] ========================================
+[2026-07-10 22:09:58]   Hardware Monitoring System v2.0.0
+[2026-07-10 22:13:00] WebSocket server initialized on path: /ws
+[2026-07-10 22:13:00] Monitor engine started — 8 devices, interval: 3000ms
+[2026-07-10 22:13:00] ========================================
+[2026-07-10 22:13:00]   Hardware Monitoring System v2.0.0
+[2026-07-10 22:13:00]   WS    : ws://localhost:10101/ws
+[2026-07-10 22:13:00]   HTTP  : http://localhost:10101
+[2026-07-10 22:13:00]   API   : http://localhost:10101/api/status
+[2026-07-10 22:13:00]   Health: http://localhost:10101/health
+[2026-07-10 22:13:00] ========================================
+[2026-07-10 22:13:07] WebSocket client connected from ::1
