@@ -3,35 +3,35 @@
   "devices": {
     "IOT NODE 001": {
       "upSeconds": 0,
-      "downSeconds": 90
+      "downSeconds": 126
     },
     "Printer M#5": {
       "upSeconds": 0,
-      "downSeconds": 90
+      "downSeconds": 126
     },
     "DCS MIXING MATERIAL F4": {
       "upSeconds": 0,
-      "downSeconds": 90
+      "downSeconds": 126
     },
     "DCS PLAYMAKER F4": {
       "upSeconds": 0,
-      "downSeconds": 90
+      "downSeconds": 126
     },
     "DCS QI F4": {
       "upSeconds": 0,
-      "downSeconds": 90
+      "downSeconds": 126
     },
     "DCS REPAIR IN LINE F4": {
       "upSeconds": 0,
-      "downSeconds": 90
+      "downSeconds": 126
     },
     "DCS POLES F4": {
       "upSeconds": 0,
-      "downSeconds": 90
+      "downSeconds": 126
     },
     "DCS TASK FORCE F4": {
       "upSeconds": 0,
-      "downSeconds": 90
+      "downSeconds": 126
     }
   }
 }
