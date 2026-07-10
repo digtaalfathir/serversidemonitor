@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "units": "m",
+  "walls": [
+    { "points": [[-10, -7], [10, -7], [10, 7], [-10, 7]], "height": 3, "thickness": 0.15, "color": "#8fa3c4", "closed": true }
+  ],
+  "floors": [
+    { "x": 0, "z": 0, "w": 20, "d": 14, "type": "concrete", "color": "#3a3f47" },
+    { "x": 0, "z": 0, "w": 2.4, "d": 14, "type": "green", "color": "#1f9e55" }
+  ],
+  "models": [],
+  "pins": [
+    { "x": -6, "z": -4, "ip": "172.19.88.19", "label": "DCS QI F4" },
+    { "x": -6, "z": 4,  "ip": "172.19.88.16", "label": "DCS PLAYMAKER F4" },
+    { "x": 6,  "z": -4, "ip": "172.19.88.17", "label": "IOT NODE 001" },
+    { "x": 6,  "z": 4,  "ip": "172.19.88.21", "label": "Printer M#5" },
+    { "x": 6,  "z": 0,  "ip": "172.19.88.24", "label": "DCS TASK FORCE F4" }
+  ],
+  "lighting": { "exposure": 1.05, "sunElevation": 55, "sunAzimuth": 40, "sunIntensity": 2.1, "ambient": 0.45, "bloom": { "strength": 0, "threshold": 0.9, "radius": 0.5 } },
+  "camera": { "position": [20, 16, 22], "target": [0, 1, 0] }
+}
