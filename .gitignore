@@ -1,2 +1,14 @@
 node_modules/
 dist/
+
+# Runtime data — ditulis ulang oleh app tiap siklus monitoring.
+# JANGAN diversion agar `git pull` tidak selalu bentrok.
+data/daily_stats.json
+data/history.json
+data/network_stats.json
+data/status_snapshot.json
+
+# Logs (harian, selalu berubah)
+logs/
+
+# Catatan: data/devices.json TETAP dilacak (daftar device / konfigurasi).
