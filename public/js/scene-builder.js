@@ -33,6 +33,7 @@ let objects = [];         // { id, type, obj, data }
 const byId = {};
 let idc = 1;
 let mode = "select";
+const MODE_LABEL = { select: "Pilih", wall: "Tembok", floor: "Lantai", pin: "Pin Device" };
 let selected = null;
 let snapOn = true;
 let draggingGizmo = false;
@@ -143,14 +144,9 @@ function init() {
   grid.material.transparent = true; grid.material.opacity = 0.5;
   scene.add(grid);
 
-  // post-processing / bloom (optional — falls back to plain render if it fails)
-  try {
-    composer = new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene, camera));
-    bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), lighting.bloom.strength, lighting.bloom.radius, lighting.bloom.threshold);
-    composer.addPass(bloomPass);
-    composer.addPass(new OutputPass());
-  } catch (e) { console.warn("[SceneBuilder] bloom dilewati:", e); composer = null; bloomPass = null; }
+  // Bloom/glow dimatikan (permintaan user — terlihat kurang natural).
+  // Render langsung dengan tone-mapping ACES + bayangan. Mudah diaktifkan lagi nanti.
+  composer = null; bloomPass = null;
 
   applyLighting();
   bindUI();
@@ -195,7 +191,6 @@ function applyLighting() {
 // =====================================================================
 //  MODES
 // =====================================================================
-const MODE_LABEL = { select: "Pilih", wall: "Tembok", floor: "Lantai", pin: "Pin Device" };
 function setMode(m) {
   cancelWall(); cancelFloor();
   mode = m;
@@ -425,10 +420,10 @@ function buildPin() {
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.72, 36), new THREE.MeshBasicMaterial({ color: 0x6366f1, side: THREE.DoubleSide }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04;
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 10),
-    new THREE.MeshStandardMaterial({ color: 0x6366f1, emissive: 0x4338ca, emissiveIntensity: 0.5 }));
+    new THREE.MeshStandardMaterial({ color: 0x6366f1, emissive: 0x4338ca, emissiveIntensity: 0.15 }));
   stem.position.y = 1.1; stem.castShadow = true;
   const ball = new THREE.Mesh(new THREE.SphereGeometry(0.36, 20, 20),
-    new THREE.MeshStandardMaterial({ color: 0x818cf8, emissive: 0x6366f1, emissiveIntensity: 2.0 }));
+    new THREE.MeshStandardMaterial({ color: 0x818cf8, emissive: 0x6366f1, emissiveIntensity: 0.3 }));
   ball.position.y = 2.35; ball.castShadow = true;
   g.add(ring, stem, ball);
   return g;
@@ -635,8 +630,6 @@ function bindUI() {
   bind("lgAzi", 0, "vAzi", (v) => (lighting.sunAzimuth = v));
   bind("lgInt", 0, "vInt", (v) => (lighting.sunIntensity = v));
   bind("lgAmb", 0, "vAmb", (v) => (lighting.ambient = v));
-  bind("lgBloom", 0, "vBloom", (v) => (lighting.bloom.strength = v));
-  bind("lgThr", 0, "vThr", (v) => (lighting.bloom.threshold = v));
 }
 function fmtVal(id, v) {
   if (id === "lgElev" || id === "lgAzi") return v + "°";
@@ -648,8 +641,6 @@ function syncLightUI() {
   $("lgAzi").value = lighting.sunAzimuth; $("vAzi").textContent = lighting.sunAzimuth + "°";
   $("lgInt").value = lighting.sunIntensity; $("vInt").textContent = lighting.sunIntensity;
   $("lgAmb").value = lighting.ambient; $("vAmb").textContent = lighting.ambient;
-  $("lgBloom").value = lighting.bloom.strength; $("vBloom").textContent = lighting.bloom.strength;
-  $("lgThr").value = lighting.bloom.threshold; $("vThr").textContent = lighting.bloom.threshold;
 }
 
 // =====================================================================

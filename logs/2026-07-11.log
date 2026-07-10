@@ -48,3 +48,66 @@
 [2026-07-11 00:51:52]   API   : http://localhost:10101/api/status
 [2026-07-11 00:51:52]   Health: http://localhost:10101/health
 [2026-07-11 00:51:52] ========================================
+[2026-07-11 01:02:49] WebSocket server initialized on path: /ws
+[2026-07-11 01:02:49] Monitor engine started — 8 devices, interval: 3000ms
+[2026-07-11 01:02:49] ========================================
+[2026-07-11 01:02:49]   Hardware Monitoring System v2.0.0
+[2026-07-11 01:02:49]   HTTP  : http://localhost:10101
+[2026-07-11 01:02:49]   WS    : ws://localhost:10101/ws
+[2026-07-11 01:02:49]   API   : http://localhost:10101/api/status
+[2026-07-11 01:02:49]   Health: http://localhost:10101/health
+[2026-07-11 01:02:49] ========================================
+[2026-07-11 01:02:54] WebSocket client connected from ::1
+[2026-07-11 01:02:59] Received SIGINT. Shutting down gracefully...
+[2026-07-11 01:02:59] Monitor engine stopped gracefully.
+[2026-07-11 01:02:59] Received SIGINT. Shutting down gracefully...
+[2026-07-11 01:02:59] Monitor engine stopped gracefully.
+[2026-07-11 01:02:59] Received SIGINT. Shutting down gracefully...
+[2026-07-11 01:02:59] Monitor engine stopped gracefully.
+[2026-07-11 01:03:00] Received SIGINT. Shutting down gracefully...
+[2026-07-11 01:03:00] Monitor engine stopped gracefully.
+[2026-07-11 01:03:00] Received SIGINT. Shutting down gracefully...
+[2026-07-11 01:03:00] Monitor engine stopped gracefully.
+[2026-07-11 01:03:28] WebSocket server initialized on path: /ws
+[2026-07-11 01:03:28] Monitor engine started — 8 devices, interval: 3000ms
+[2026-07-11 01:03:28] ========================================
+[2026-07-11 01:03:28]   Hardware Monitoring System v2.0.0
+[2026-07-11 01:03:28]   HTTP  : http://localhost:10101
+[2026-07-11 01:03:28]   WS    : ws://localhost:10101/ws
+[2026-07-11 01:03:28]   API   : http://localhost:10101/api/status
+[2026-07-11 01:03:28]   Health: http://localhost:10101/health
+[2026-07-11 01:03:28] ========================================
+[2026-07-11 01:03:37] Received SIGINT. Shutting down gracefully...
+[2026-07-11 01:03:37] Monitor engine stopped gracefully.
+[2026-07-11 01:03:37] Received SIGINT. Shutting down gracefully...
+[2026-07-11 01:03:37] Monitor engine stopped gracefully.
+[2026-07-11 01:05:16] WebSocket server initialized on path: /ws
+[2026-07-11 01:05:16] Monitor engine started — 8 devices, interval: 3000ms
+[2026-07-11 01:05:16] ========================================
+[2026-07-11 01:05:16]   Hardware Monitoring System v2.0.0
+[2026-07-11 01:05:16]   HTTP  : http://localhost:10101
+[2026-07-11 01:05:16]   WS    : ws://localhost:10101/ws
+[2026-07-11 01:05:16]   API   : http://localhost:10101/api/status
+[2026-07-11 01:05:16]   Health: http://localhost:10101/health
+[2026-07-11 01:05:16] ========================================
+[2026-07-11 01:05:42] WebSocket client connected from ::1
+[2026-07-11 01:06:13] Received SIGTERM. Shutting down gracefully...
+[2026-07-11 01:06:14] Monitor engine stopped gracefully.
+[2026-07-11 01:06:39] WebSocket server initialized on path: /ws
+[2026-07-11 01:06:39] ========================================
+[2026-07-11 01:06:39]   Hardware Monitoring System v2.0.0
+[2026-07-11 01:06:39]   HTTP  : http://localhost:10101
+[2026-07-11 01:06:39]   WS    : ws://localhost:10101/ws
+[2026-07-11 01:06:39]   API   : http://localhost:10101/api/status
+[2026-07-11 01:06:39]   Health: http://localhost:10101/health
+[2026-07-11 01:06:39] Monitor engine started — 8 devices, interval: 3000ms
+[2026-07-11 01:06:39] ========================================
+[2026-07-11 01:06:42] WebSocket client connected from ::1
+[2026-07-11 01:11:41] WebSocket client disconnected from ::1
+[2026-07-11 01:11:42] WebSocket client connected from ::1
+[2026-07-11 01:11:46] WebSocket client disconnected from ::1
+[2026-07-11 01:11:46] WebSocket client connected from ::1
+[2026-07-11 01:11:53] Received SIGINT. Shutting down gracefully...
+[2026-07-11 01:11:53] Monitor engine stopped gracefully.
+[2026-07-11 01:11:56] Received SIGINT. Shutting down gracefully...
+[2026-07-11 01:11:56] Monitor engine stopped gracefully.
