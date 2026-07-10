@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scene Builder — 3D Digital Twin (v2)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/scene-builder.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/vendor/three/three.module.min.js",
+      "three/addons/": "/vendor/three/addons/"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- ===== TOP TOOLBAR ===== -->
+  <div class="tb">
+    <h1>🧱 Scene Builder</h1>
+    <button class="btn mode active" id="mSelect" data-mode="select">Pilih</button>
+    <button class="btn mode" id="mWall"   data-mode="wall">Tembok</button>
+    <button class="btn mode" id="mFloor"  data-mode="floor">Lantai</button>
+    <button class="btn mode" id="mPin"    data-mode="pin">Pin Device</button>
+    <span class="sep"></span>
+    <button class="btn" id="btnModel">+ Model (.glb)</button>
+    <button class="btn" id="btnDenah">Muat Denah</button>
+    <span class="sep"></span>
+    <button class="btn" id="btnTop">Top View</button>
+    <span class="spacer"></span>
+    <button class="btn" id="btnNew">Baru</button>
+    <button class="btn" id="btnLoad">Muat scene.json</button>
+    <button class="btn primary" id="btnSave">💾 Simpan scene.json</button>
+    <a class="btn link" href="/floormap3d.html">Monitor 3D →</a>
+    <input type="file" id="fileModel" accept=".glb,.gltf" hidden>
+    <input type="file" id="fileDenah" accept="image/*" hidden>
+    <input type="file" id="fileScene" accept=".json,application/json" hidden>
+  </div>
+
+  <!-- ===== VIEWPORT ===== -->
+  <div id="view">
+    <canvas id="c3d"></canvas>
+    <div class="overlay-tip" id="tip"></div>
+  </div>
+
+  <!-- ===== INSPECTOR ===== -->
+  <aside class="insp">
+    <!-- Wall props -->
+    <div class="sec hidden" id="secWall">
+      <h3>Tembok</h3>
+      <div class="row"><label>Tinggi (m)</label><input type="number" id="wallH" value="3" step="0.1" min="0.2"></div>
+      <div class="row"><label>Tebal (m)</label><input type="number" id="wallT" value="0.15" step="0.05" min="0.02"></div>
+      <div class="row"><label>Tutup loop</label><input type="checkbox" id="wallClosed" checked></div>
+      <div class="row"><label>Warna</label><input type="color" id="wallColor" value="#8fa3c4"></div>
+      <div class="hint">Klik titik demi titik di lantai untuk membentuk tembok. <b>Enter</b>/klik-dobel = selesai. <b>Esc</b> = batal. Aktifkan "tutup loop" untuk tembok luar keliling.</div>
+    </div>
+
+    <!-- Floor props -->
+    <div class="sec hidden" id="secFloor">
+      <h3>Lantai</h3>
+      <div class="row"><label>Tipe</label>
+        <select id="floorType">
+          <option value="concrete">Beton pabrik</option>
+          <option value="green">Jalur hijau</option>
+          <option value="office">Office</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </div>
+      <div class="row"><label>Warna custom</label><input type="color" id="floorColor" value="#3a3f47"></div>
+      <div class="hint">Klik <b>dua titik</b> (sudut ke sudut) untuk membuat kotak lantai. Buat beberapa area dengan tipe berbeda (mis. jalur hijau + beton).</div>
+    </div>
+
+    <!-- Pin props -->
+    <div class="sec hidden" id="secPin">
+      <h3>Pin Device</h3>
+      <div class="row"><label>IP</label><input type="text" id="pinIp" list="ipList" placeholder="172.19.88.x"></div>
+      <div class="row"><label>Label</label><input type="text" id="pinLabel" placeholder="opsional"></div>
+      <datalist id="ipList"></datalist>
+      <div class="hint">Klik di lantai untuk menaruh titik status. Pin ber-IP akan menyala hijau/merah sesuai status live di dashboard.</div>
+    </div>
+
+    <!-- Model props (selected) -->
+    <div class="sec hidden" id="secModel">
+      <h3>Model Terpilih</h3>
+      <div class="row"><label>Nama</label><input type="text" id="modelName" placeholder="mis. Mesin Inject 1"></div>
+      <div class="row"><label>Path</label><input type="text" id="modelPath" placeholder="/models/x.glb"></div>
+      <div class="row"><label>Device IP</label><input type="text" id="modelIp" list="ipList" placeholder="opsional"></div>
+      <div class="row"><label>Gizmo</label>
+        <div class="tmodes">
+          <button class="btn active" id="tmMove" data-tm="translate">Geser</button>
+          <button class="btn" id="tmRot" data-tm="rotate">Putar</button>
+          <button class="btn" id="tmScl" data-tm="scale">Skala</button>
+        </div>
+      </div>
+      <div class="warn">Pastikan file model juga ada di <b>public/models/</b> dengan nama sesuai <b>Path</b>, agar dashboard runtime bisa memuatnya.</div>
+    </div>
+
+    <!-- Denah aid -->
+    <div class="sec hidden" id="secDenah">
+      <h3>Denah (alas jiplak)</h3>
+      <div class="row"><label>Lebar (m)</label><input type="number" id="denahW" value="40" step="1" min="1"></div>
+      <div class="row"><label>Opacity</label><input type="range" id="denahOp" min="0" max="1" step="0.05" value="0.6"></div>
+      <div class="row"><label>Tampilkan</label><input type="checkbox" id="denahShow" checked></div>
+      <div class="hint">Alas ini hanya bantuan menjiplak — tidak ikut tersimpan ke scene.json.</div>
+    </div>
+
+    <!-- Lighting -->
+    <div class="sec" id="secLight">
+      <h3>Pencahayaan</h3>
+      <div class="row"><label>Exposure</label><input type="range" id="lgExp" min="0.4" max="2" step="0.05" value="1.05"><span class="v" id="vExp">1.05</span></div>
+      <div class="row"><label>Sudut matahari</label><input type="range" id="lgElev" min="8" max="89" step="1" value="55"><span class="v" id="vElev">55°</span></div>
+      <div class="row"><label>Arah matahari</label><input type="range" id="lgAzi" min="0" max="360" step="1" value="40"><span class="v" id="vAzi">40°</span></div>
+      <div class="row"><label>Intensitas</label><input type="range" id="lgInt" min="0" max="4" step="0.1" value="2.1"><span class="v" id="vInt">2.1</span></div>
+      <div class="row"><label>Ambient</label><input type="range" id="lgAmb" min="0" max="1.5" step="0.05" value="0.45"><span class="v" id="vAmb">0.45</span></div>
+      <div class="row"><label>Glow (bloom)</label><input type="range" id="lgBloom" min="0" max="1.5" step="0.05" value="0.55"><span class="v" id="vBloom">0.55</span></div>
+      <div class="row"><label>Glow threshold</label><input type="range" id="lgThr" min="0" max="1" step="0.02" value="0.82"><span class="v" id="vThr">0.82</span></div>
+    </div>
+
+    <!-- Object list -->
+    <div class="sec" id="secList">
+      <h3>Objek di Scene</h3>
+      <ul id="objList"></ul>
+    </div>
+  </aside>
+
+  <!-- ===== STATUS BAR ===== -->
+  <div class="status">
+    <span id="statMode">Mode: <b>Pilih</b></span>
+    <span id="statCoords">—</span>
+    <span class="right">
+      <span><input type="checkbox" id="snap" checked> snap 0.5m</span>
+      <span id="statCount">0 objek</span>
+    </span>
+  </div>
+
+  <div id="toast"></div>
+  <script type="module" src="/js/scene-builder.js"></script>
+</body>
+</html>

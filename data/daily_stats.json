@@ -1,37 +1,37 @@
 {
-  "date": "2026-07-10",
+  "date": "2026-07-11",
   "devices": {
     "IOT NODE 001": {
       "upSeconds": 0,
-      "downSeconds": 201
+      "downSeconds": 18
     },
     "Printer M#5": {
       "upSeconds": 0,
-      "downSeconds": 201
+      "downSeconds": 18
     },
     "DCS MIXING MATERIAL F4": {
       "upSeconds": 0,
-      "downSeconds": 201
+      "downSeconds": 18
     },
     "DCS PLAYMAKER F4": {
       "upSeconds": 0,
-      "downSeconds": 201
+      "downSeconds": 18
     },
     "DCS QI F4": {
       "upSeconds": 0,
-      "downSeconds": 201
+      "downSeconds": 18
     },
     "DCS REPAIR IN LINE F4": {
       "upSeconds": 0,
-      "downSeconds": 201
+      "downSeconds": 18
     },
     "DCS POLES F4": {
       "upSeconds": 0,
-      "downSeconds": 201
+      "downSeconds": 18
     },
     "DCS TASK FORCE F4": {
       "upSeconds": 0,
-      "downSeconds": 201
+      "downSeconds": 18
     }
   }
 }

@@ -9,6 +9,11 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import {
   VIEW, WALL, ROOMS, WALLS, ROOM_COLORS, LAYOUT, autoPos, SEV_COLORS, STATUS_COLORS,
 } from "./floorplan-data.js";
@@ -28,7 +33,7 @@ const toZ = (y) => y - VIEW.cy;
 const SPHERE_Y = WALL.height + 24;   // pins float just above the walls
 
 // ---- state ----
-let scene, camera, renderer, labelRenderer, controls, raycaster, clock;
+let scene, camera, renderer, labelRenderer, controls, raycaster, clock, composer, bloomPass;
 let deviceByIp = {};
 const markerGroups = {};   // ip -> THREE.Group
 const markerMeshes = [];   // sphere meshes (raycast targets)
@@ -53,13 +58,24 @@ function initThree() {
   const w = stage.clientWidth, h = stage.clientHeight;
 
   scene = new THREE.Scene();
+  scene.background = makeGradientBackground();
+  scene.fog = new THREE.Fog(0x0a0e1a, 1150, 3100);
 
   camera = new THREE.PerspectiveCamera(48, w / h, 1, 8000);
   camera.position.set(0, 720, 900);
 
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(w, h);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;   // cinematic tone curve
+  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  // Image-based lighting for realistic PBR reflections — generated procedurally
+  // (no external HDRI file needed, so it still works fully offline).
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
   // CSS2D overlay for crisp text labels (sits above the canvas)
   labelRenderer = new CSS2DRenderer();
@@ -78,26 +94,107 @@ function initThree() {
   controls.maxDistance = 2600;
   controls.update();
 
-  // lights
-  scene.add(new THREE.HemisphereLight(0x9fb4d8, 0x0a0e1a, 1.0));
-  const dir = new THREE.DirectionalLight(0xffffff, 1.1);
-  dir.position.set(420, 640, 320);
-  scene.add(dir);
-  scene.add(new THREE.AmbientLight(0x223148, 0.5));
+  // lights: soft fill (hemisphere + env) + one key light that casts shadows
+  scene.add(new THREE.HemisphereLight(0x9fb4d8, 0x0a0e1a, 0.45));
+  scene.add(new THREE.AmbientLight(0x1a2436, 0.25));
+  const key = new THREE.DirectionalLight(0xffffff, 2.1);
+  key.position.set(480, 820, 380);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.bias = -0.0004;
+  key.shadow.normalBias = 1.2;
+  const sc = key.shadow.camera;
+  sc.left = -720; sc.right = 720; sc.top = 720; sc.bottom = -720;
+  sc.near = 100; sc.far = 2600;
+  sc.updateProjectionMatrix();
+  scene.add(key);
 
-  // ground + grid
+  // ground (procedural concrete) + subtle grid + green walkway markings
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(3600, 3600),
-    new THREE.MeshStandardMaterial({ color: 0x070a12, roughness: 1 })
+    new THREE.PlaneGeometry(4000, 4000),
+    new THREE.MeshStandardMaterial({ map: makeConcreteTexture(), roughness: 0.95, metalness: 0 })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -3;
+  ground.receiveShadow = true;
   scene.add(ground);
-  const grid = new THREE.GridHelper(2400, 48, 0x1c2740, 0x121a2e);
-  grid.position.y = -2.5;
+
+  const grid = new THREE.GridHelper(2400, 48, 0x1c2740, 0x141c30);
+  grid.position.y = -2.9;
+  grid.material.transparent = true;
+  grid.material.opacity = 0.25;
   scene.add(grid);
 
+  addGreenWalkway();
+
+  // post-processing: bloom makes the status pins glow like a control-room display
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), 0.55, 0.5, 0.82);
+  composer.addPass(bloomPass);
+  composer.addPass(new OutputPass());
+
+  pmrem.dispose();
   window.addEventListener("resize", onResize);
+}
+
+// ---- procedural assets (no external files → works offline) ----
+function makeGradientBackground() {
+  const c = document.createElement("canvas"); c.width = 16; c.height = 256;
+  const ctx = c.getContext("2d");
+  const g = ctx.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, "#0d1324"); g.addColorStop(0.55, "#0a0e1a"); g.addColorStop(1, "#05070f");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 16, 256);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function makeConcreteTexture() {
+  const s = 512;
+  const c = document.createElement("canvas"); c.width = c.height = s;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#10151f"; ctx.fillRect(0, 0, s, s);
+  for (let i = 0; i < 70; i++) {                 // soft blotches
+    const x = Math.random() * s, y = Math.random() * s, r = 20 + Math.random() * 90;
+    const shade = Math.random() > 0.5 ? "190,200,220" : "0,0,0";
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(${shade},0.05)`); g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  for (let i = 0; i < 9000; i++) {               // fine speckle
+    ctx.fillStyle = `rgba(${Math.random() > 0.5 ? "180,190,210" : "0,0,0"},${Math.random() * 0.05})`;
+    ctx.fillRect(Math.random() * s, Math.random() * s, 1, 1);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(10, 10);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return tex;
+}
+
+// green painted walkway loop around the building (echoes the factory references)
+function addGreenWalkway() {
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x1f9e55, emissive: 0x0c3f22, emissiveIntensity: 0.5, roughness: 0.6, metalness: 0,
+  });
+  const y = -2.88, wdt = 46;
+  const x0 = toX(140) - 72, x1 = toX(960) + 72;
+  const z0 = toZ(90) - 72, z1 = toZ(650) + 72;
+  const segs = [
+    [(x0 + x1) / 2, z0, (x1 - x0) + wdt, wdt],
+    [(x0 + x1) / 2, z1, (x1 - x0) + wdt, wdt],
+    [x0, (z0 + z1) / 2, wdt, (z1 - z0)],
+    [x1, (z0 + z1) / 2, wdt, (z1 - z0)],
+  ];
+  segs.forEach(([cx, cz, sx, sz]) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(sx, sz), mat);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(cx, y, cz);
+    m.receiveShadow = true;
+    scene.add(m);
+  });
 }
 
 // =====================================================================
@@ -114,6 +211,8 @@ function buildFloorPlan() {
     });
     const slab = new THREE.Mesh(geo, mat);
     slab.position.set(toX(r.x + r.w / 2), -1.5, toZ(r.y + r.h / 2));
+    slab.receiveShadow = true;
+    slab.castShadow = true;
     building.add(slab);
 
     const edges = new THREE.LineSegments(
@@ -134,7 +233,7 @@ function buildFloorPlan() {
 
   // ---- walls (extruded from line segments; each drawn once) ----
   const wallMat = new THREE.MeshStandardMaterial({
-    color: 0x8fa3c4, roughness: 0.55, metalness: 0.1,
+    color: 0x8fa3c4, roughness: 0.5, metalness: 0.15, envMapIntensity: 0.9,
   });
   WALLS.forEach(([x1, y1, x2, y2]) => {
     const horizontal = y1 === y2;
@@ -146,6 +245,8 @@ function buildFloorPlan() {
     wall.position.set(
       toX((x1 + x2) / 2), WALL.height / 2, toZ((y1 + y2) / 2)
     );
+    wall.castShadow = true;
+    wall.receiveShadow = true;
     building.add(wall);
   });
 
@@ -172,12 +273,14 @@ function makeMarker(ip) {
     new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x000000, roughness: 0.5 })
   );
   stem.position.y = SPHERE_Y / 2;
+  stem.castShadow = true;
 
   const core = new THREE.Mesh(
     new THREE.SphereGeometry(12, 28, 28),
-    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x000000, emissiveIntensity: 0.9, roughness: 0.35 })
+    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x000000, emissiveIntensity: 2.2, roughness: 0.35 })
   );
   core.position.y = SPHERE_Y;
+  core.castShadow = true;
   core.userData.ip = ip;
 
   const halo = new THREE.Mesh(
@@ -260,7 +363,7 @@ function animate() {
     }
   }
   controls.update();
-  renderer.render(scene, camera);
+  composer.render();                 // RenderPass → Bloom → OutputPass (tone-mapped)
   labelRenderer.render(scene, camera);
 }
 
@@ -269,6 +372,7 @@ function onResize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
+  composer.setSize(w, h);
   labelRenderer.setSize(w, h);
 }
 
