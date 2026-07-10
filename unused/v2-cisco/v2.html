@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <!-- =====================================================================
      v2 — Cisco-style 3D monitoring (STANDALONE, single file)
-     PARKIR di unused/. Untuk MENGAKTIFKAN: salin file ini ke folder public/
-     lalu buka http://<host>:10101/v2.html (butuh server jalan agar
-     /vendor/three dan /ws bisa diakses).
+     Memuat scene.json BUATANMU (hasil Scene Builder) + model .glb dari
+     /models/, lalu menempel status device live. Tampilan patokan Cisco
+     Spaces, flat (tanpa glow).
 
-     Isi: 1 tempat, 1 scene, 2 titik device. Flat/clean (tanpa bloom),
-     patokan tampilan = Cisco Spaces. Semua (scene + gaya + logika) di sini.
+     PARKIR di unused/. MENGAKTIFKAN:
+       cp unused/v2-cisco/v2.html public/v2.html
+       # taruh scene.json kamu di public/  dan model .glb di public/models/
+       npm start  →  buka http://localhost:10101/v2.html
+     (bisa juga /v2.html?scene=/scene.example.json untuk contoh)
 
      ============ CARA PIN NYAMBUNG KE DEVICE ASLI ============
-     Jembatannya = IP. Tiap device di bawah punya field `ip`. Server mengirim
-     daftar device live via WebSocket /ws (tiap item punya `ip` + `status`).
-     Kode mencocokkan device.ip === pin.ip → mewarnai pin (hijau UP/merah DOWN).
-     Mau ganti device yang dipantau? Cukup ubah `ip` di array DEVICES.
+     Jembatannya = IP. Pin punya `ip`, model punya `deviceIp`. Server kirim
+     device live via /ws (punya `ip` + `status`). Kode mencocokkan
+     device.ip === pin.ip / model.deviceIp → warnai + kartu status.
      ===================================================================== -->
 <html lang="id">
 <head>
@@ -28,23 +30,20 @@
     #c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
     #labels{position:fixed;inset:0;overflow:hidden;pointer-events:none}
 
-    /* ---- floating Cisco-style status card (above each device) ---- */
     .card{background:rgba(16,22,36,.92);border:1px solid rgba(255,255,255,.1);border-radius:12px;
       padding:9px 12px;min-width:150px;backdrop-filter:blur(8px);box-shadow:0 12px 34px rgba(0,0,0,.5);
       transform:translate(-50%,-100%);text-align:center}
     .card .nm{font-size:12px;font-weight:700;color:#fff;margin-bottom:6px}
-    .card .st{font-size:20px;font-weight:800;letter-spacing:.5px;border-radius:8px;padding:5px 0}
+    .card .st{font-size:19px;font-weight:800;letter-spacing:.5px;border-radius:8px;padding:5px 0}
     .card .st.up{background:rgba(34,197,94,.16);color:#4ade80}
     .card .st.down{background:rgba(239,68,68,.16);color:#f87171}
     .card .st.unk{background:rgba(148,163,184,.14);color:#94a3b8}
     .card .ip{font-size:10px;color:var(--dim);font-family:monospace;margin-top:5px}
-    .zone{font-size:12px;font-weight:800;letter-spacing:3px;color:rgba(255,255,255,.35);transform:translate(-50%,-50%)}
 
-    /* ---- left info panel (Cisco SFO-style) ---- */
     .panel{position:fixed;top:20px;left:20px;width:210px;background:rgba(13,19,32,.9);
       border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:18px;backdrop-filter:blur(14px)}
     .panel .loc{font-size:11px;color:var(--dim);font-weight:600;letter-spacing:1px}
-    .panel h1{font-size:22px;font-weight:800;margin:2px 0 14px}
+    .panel h1{font-size:20px;font-weight:800;margin:2px 0 14px}
     .panel .big{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
     .panel .big b{font-size:40px;font-weight:800;line-height:1}
     .panel .big span{font-size:12px;color:var(--dim)}
@@ -57,7 +56,6 @@
     .bar{height:7px;border-radius:5px;background:rgba(255,255,255,.08);margin-top:5px;overflow:hidden}
     .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--up),#4ade80);transition:width .4s}
 
-    /* ---- top-right live indicator ---- */
     .live{position:fixed;top:24px;right:24px;display:flex;align-items:center;gap:8px;font-size:12px;
       font-weight:600;background:rgba(13,19,32,.85);border:1px solid rgba(255,255,255,.09);
       border-radius:20px;padding:7px 14px;backdrop-filter:blur(10px)}
@@ -65,6 +63,10 @@
     .dot.on{background:var(--up);box-shadow:0 0 8px rgba(34,197,94,.6)}
     .hint{position:fixed;bottom:18px;right:22px;font-size:11px;color:var(--dim);
       background:rgba(13,19,32,.8);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:7px 12px}
+    #msg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;
+      background:rgba(10,14,24,.8);backdrop-filter:blur(4px);padding:24px;z-index:20}
+    #msg div{max-width:440px;font-size:14px;line-height:1.7;color:var(--dim)}
+    #msg b{color:var(--txt)}
   </style>
   <script type="importmap">
   { "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three/addons/" } }
@@ -75,8 +77,8 @@
   <div id="labels"></div>
 
   <div class="panel">
-    <div class="loc">FACTORY 4 · LANTAI 1</div>
-    <h1 id="place">Line Produksi</h1>
+    <div class="loc">DIGITAL TWIN · LIVE</div>
+    <h1>Monitoring 3D</h1>
     <div class="big"><b id="upBig">0</b><span>device online</span></div>
     <div class="stats">
       <div class="stat"><b id="nTotal">0</b><span>Total</span></div>
@@ -88,33 +90,23 @@
 
   <div class="live"><span class="dot" id="cdot"></span><span id="clabel">Menyambung…</span></div>
   <div class="hint">Drag = putar · scroll = zoom</div>
+  <div id="msg"><div></div></div>
 
   <script type="module">
     import * as THREE from "three";
     import { OrbitControls } from "three/addons/controls/OrbitControls.js";
     import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
-
-    /* ============================================================
-       SCENE DATA — satu tempat, satu scene, 2 titik device.
-       Ganti `ip` untuk memilih device asli yang dipantau.
-       ============================================================ */
-    const DEVICES = [
-      { ip: "172.19.88.19", name: "DCS QI F4",        x: -5.5, z: 0 },  // Zone A
-      { ip: "172.19.88.16", name: "DCS PLAYMAKER F4", x:  5.5, z: 0 },  // Zone B
-    ];
-    const ZONES = [
-      { x: -5.5, z: 0, w: 9, d: 12, color: 0x21324e, label: "ZONE A" },
-      { x:  5.5, z: 0, w: 9, d: 12, color: 0x223f31, label: "ZONE B" },
-    ];
+    import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     const canvas = document.getElementById("c");
     const W = () => innerWidth, H = () => innerHeight;
+    const loader = new GLTFLoader();
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0e18);
 
-    const camera = new THREE.PerspectiveCamera(48, W() / H(), 0.1, 1000);
-    camera.position.set(0, 17, 24);
+    const camera = new THREE.PerspectiveCamera(48, W() / H(), 0.1, 3000);
+    camera.position.set(20, 16, 24);
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -128,132 +120,182 @@
 
     const controls = new OrbitControls(camera, canvas);
     controls.enableDamping = true; controls.dampingFactor = 0.09;
-    controls.maxPolarAngle = Math.PI * 0.47; controls.target.set(0, 1, 0);
-    controls.minDistance = 10; controls.maxDistance = 60;
+    controls.maxPolarAngle = Math.PI * 0.48; controls.target.set(0, 1, 0);
+    controls.minDistance = 4; controls.maxDistance = 300;
 
-    // ---- lighting: flat & soft (no bloom / no tone-mapping) ----
+    // flat & soft lighting (no bloom / no tone-mapping)
     scene.add(new THREE.HemisphereLight(0xa9bcd8, 0x0a0e18, 1.0));
     scene.add(new THREE.AmbientLight(0x24304a, 0.5));
     const key = new THREE.DirectionalLight(0xffffff, 1.6);
-    key.position.set(14, 22, 12); key.castShadow = true;
+    key.position.set(40, 60, 30); key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
-    key.shadow.camera.left = -20; key.shadow.camera.right = 20;
-    key.shadow.camera.top = 20; key.shadow.camera.bottom = -20;
-    key.shadow.bias = -0.0004; key.shadow.camera.updateProjectionMatrix();
+    const sc = key.shadow.camera; sc.left = -60; sc.right = 60; sc.top = 60; sc.bottom = -60; sc.far = 300;
+    key.shadow.bias = -0.0004; sc.updateProjectionMatrix();
     scene.add(key);
 
-    // ---- base slab ----
-    const base = new THREE.Mesh(
-      new THREE.BoxGeometry(24, 0.4, 16),
-      new THREE.MeshStandardMaterial({ color: 0x0f1522, roughness: 0.95 })
-    );
-    base.position.y = -0.2; base.receiveShadow = true;
-    scene.add(base);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500),
+      new THREE.MeshStandardMaterial({ color: 0x0d1220, roughness: 0.98 }));
+    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+    const grid = new THREE.GridHelper(160, 160, 0x1c2740, 0x141c30);
+    grid.material.transparent = true; grid.material.opacity = 0.35; scene.add(grid);
 
-    // ---- coloured zone floors (Cisco pastel blocks) ----
-    ZONES.forEach((z) => {
-      const f = new THREE.Mesh(
-        new THREE.BoxGeometry(z.w, 0.15, z.d),
-        new THREE.MeshStandardMaterial({ color: z.color, roughness: 0.85 })
-      );
-      f.position.set(z.x, 0.08, z.z); f.receiveShadow = true;
-      scene.add(f);
-      const el = document.createElement("div"); el.className = "zone"; el.textContent = z.label;
-      const lb = new CSS2DObject(el); lb.position.set(z.x, 0.2, z.z + z.d / 2 - 1); scene.add(lb);
-    });
+    let built = new THREE.Group(); scene.add(built);
+    const devices = {};   // ip -> { parts:[], statusEl }
 
-    // ---- low outer + divider walls (see-into rooms, Cisco style) ----
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0xcdd6e6, roughness: 0.6, metalness: 0.05 });
-    function wall(x, z, w, d, h = 2.4) {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
-      m.position.set(x, h / 2, z); m.castShadow = true; m.receiveShadow = true; scene.add(m);
+    // ===================== GEOMETRY BUILDERS (sama dgn Scene Builder) =====================
+    function buildWall(d) {
+      const g = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(d.color || "#cdd6e6"), roughness: 0.6, metalness: 0.05 });
+      const pts = d.points || [], openings = d.openings || [], H1 = d.height || 3, T = d.thickness || 0.15;
+      const segs = []; for (let i = 0; i < pts.length - 1; i++) segs.push(i);
+      if (d.closed && pts.length > 2) segs.push(pts.length - 1);
+      segs.forEach((i) => {
+        const a = i < pts.length - 1 ? pts[i] : pts[pts.length - 1];
+        const b = i < pts.length - 1 ? pts[i + 1] : pts[0];
+        const dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz); if (L < 1e-3) return;
+        const ux = dx / L, uz = dz / L, ang = -Math.atan2(dz, dx);
+        const add = (s, e, y0, y1) => {
+          const len = e - s; if (len < 1e-3 || y1 - y0 < 1e-3) return; const mid = (s + e) / 2;
+          const m = new THREE.Mesh(new THREE.BoxGeometry(len, y1 - y0, T), mat);
+          m.position.set(a[0] + ux * mid, (y0 + y1) / 2, a[1] + uz * mid);
+          m.rotation.y = ang; m.castShadow = true; m.receiveShadow = true; g.add(m);
+        };
+        const ops = openings.filter((o) => o.seg === i).sort((p, q) => p.dist - q.dist);
+        if (!ops.length) { add(-T / 2, L + T / 2, 0, H1); return; }
+        let cur = 0;
+        ops.forEach((op) => {
+          const os = Math.max(0, op.dist - op.width / 2), oe = Math.min(L, op.dist + op.width / 2);
+          if (os > cur) add(cur === 0 ? -T / 2 : cur, os, 0, H1);
+          const top = Math.min(H1, op.top ?? H1), sill = Math.max(0, op.sill ?? 0);
+          if (top < H1) add(os, oe, top, H1);
+          if (sill > 0) add(os, oe, 0, sill);
+          cur = oe;
+        });
+        if (cur < L) add(cur, L + T / 2, 0, H1);
+      });
+      return g;
     }
-    wall(0, -7.5, 22, 0.16);   // back
-    wall(0, 7.5, 22, 0.16);    // front
-    wall(-11, 0, 0.16, 15);    // left
-    wall(11, 0, 0.16, 15);     // right
-    wall(0, 0, 0.16, 15);      // divider between zones
+    const FLOOR_COL = { concrete: 0x3a3f47, green: 0x1f9e55, office: 0x8790a0 };
+    function buildFloor(d) {
+      const col = d.type === "custom" ? new THREE.Color(d.color).getHex() : (FLOOR_COL[d.type] ?? 0x3a3f47);
+      const mat = new THREE.MeshStandardMaterial({ color: col, roughness: d.type === "green" ? 0.6 : 0.92,
+        emissive: d.type === "green" ? 0x0c3f22 : 0x000000, emissiveIntensity: d.type === "green" ? 0.3 : 0 });
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(d.w, d.d), mat);
+      m.rotation.x = -Math.PI / 2; m.position.set(d.x, 0.02 + (d.order || 0) * 0.006, d.z);
+      m.renderOrder = d.order || 0; m.receiveShadow = true; return m;
+    }
+    function makeTextSprite(d) {
+      const text = d.text || "Teks", fpx = 64;
+      const p = document.createElement("canvas").getContext("2d"); p.font = `700 ${fpx}px Inter,Arial,sans-serif`;
+      const cw = Math.ceil(p.measureText(text).width) + 28, ch = fpx + 24;
+      const cv = document.createElement("canvas"); cv.width = cw; cv.height = ch;
+      const x = cv.getContext("2d"); x.font = `700 ${fpx}px Inter,Arial,sans-serif`;
+      x.textAlign = "center"; x.textBaseline = "middle";
+      x.lineWidth = 6; x.strokeStyle = "rgba(5,7,15,.85)"; x.strokeText(text, cw / 2, ch / 2);
+      x.fillStyle = d.color || "#e2e8f0"; x.fillText(text, cw / 2, ch / 2);
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+      const h = d.size || 1; spr.scale.set(h * (cw / ch), h, 1); spr.position.set(d.x, d.y ?? 1.6, d.z); return spr;
+    }
 
-    // ---- device pins + floating status cards ----
-    const pins = {};   // ip -> { ball, ring, stem, cardEl, statusEl }
-    DEVICES.forEach((d) => {
+    // ===================== DEVICE MARKER + CISCO CARD =====================
+    function makeCard(name, ip) {
+      const el = document.createElement("div"); el.className = "card";
+      el.innerHTML = `<div class="nm">${name}</div><div class="st unk">—</div><div class="ip">${ip}</div>`;
+      return el;
+    }
+    function registerDevice(ip, group, parts, cardEl) {
+      const obj = new CSS2DObject(cardEl); obj.position.y = (parts.ballY ?? 3) + 1.4; group.add(obj);
+      devices[ip] = { parts, statusEl: cardEl.querySelector(".st") };
+    }
+    function addPin(d) {
       const g = new THREE.Group(); g.position.set(d.x, 0, d.z);
-      const ring = new THREE.Mesh(new THREE.RingGeometry(0.7, 0.95, 40),
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.6, 0.85, 40),
         new THREE.MeshBasicMaterial({ color: 0x64748b, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }));
-      ring.rotation.x = -Math.PI / 2; ring.position.y = 0.18;
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.4, 12),
-        new THREE.MeshStandardMaterial({ color: 0x64748b }));
-      stem.position.y = 1.4; stem.castShadow = true;
-      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.42, 26, 26),
+      ring.rotation.x = -Math.PI / 2; ring.position.y = 0.05;
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 12), new THREE.MeshStandardMaterial({ color: 0x64748b }));
+      stem.position.y = 1.2; stem.castShadow = true;
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.36, 24, 24),
         new THREE.MeshStandardMaterial({ color: 0x64748b, emissive: 0x64748b, emissiveIntensity: 0.35, roughness: 0.4 }));
-      ball.position.y = 2.7; ball.castShadow = true;
-      g.add(ring, stem, ball);
+      ball.position.y = 2.5; ball.castShadow = true;
+      g.add(ring, stem, ball); built.add(g);
+      if (d.ip) registerDevice(d.ip, g, { ball, stem, ring, ballY: 2.5 }, makeCard(d.label || d.ip, d.ip));
+    }
+    function addModel(d) {
+      loader.load(d.url, (gltf) => {
+        const root = gltf.scene;
+        root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+        root.position.fromArray(d.position || [0, 0, 0]); root.rotation.y = d.rotationY || 0; root.scale.setScalar(d.scale || 1);
+        built.add(root);
+        if (d.deviceIp) {
+          const box = new THREE.Box3().setFromObject(root);
+          const topY = isFinite(box.max.y) ? box.max.y : 2;
+          const g = new THREE.Group(); g.position.set(d.position?.[0] || 0, 0, d.position?.[2] || 0);
+          const ring = new THREE.Mesh(new THREE.RingGeometry(0.6, 0.85, 40),
+            new THREE.MeshBasicMaterial({ color: 0x64748b, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }));
+          ring.rotation.x = -Math.PI / 2; ring.position.y = 0.05; g.add(ring); built.add(g);
+          registerDevice(d.deviceIp, g, { ring, ballY: topY }, makeCard(d.name || d.deviceIp, d.deviceIp));
+          applyStatus(Object.values(lastDevices));
+        }
+      }, undefined, () => console.warn("model tak ditemukan:", d.url));
+    }
 
-      // Cisco-style floating card (HTML via CSS2D)
-      const card = document.createElement("div"); card.className = "card";
-      card.innerHTML = `<div class="nm">${d.name}</div><div class="st unk">—</div><div class="ip">${d.ip}</div>`;
-      const cardObj = new CSS2DObject(card); cardObj.position.set(0, 4.4, 0); g.add(cardObj);
+    // ===================== LOAD SCENE.JSON =====================
+    async function loadScene() {
+      const url = new URLSearchParams(location.search).get("scene") || "/scene.json";
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        const s = JSON.parse(await res.text());   // throws kalau file HTML fallback
+        (s.walls || []).forEach((d) => built.add(buildWall(d)));
+        (s.floors || []).forEach((d) => built.add(buildFloor(d)));
+        (s.texts || []).forEach((d) => built.add(makeTextSprite(d)));
+        (s.pins || []).forEach(addPin);
+        (s.models || []).forEach(addModel);
+        if (s.camera && s.camera.position) { camera.position.fromArray(s.camera.position); controls.target.fromArray(s.camera.target); controls.update(); }
+      } catch (e) {
+        const m = document.getElementById("msg");
+        m.style.display = "flex";
+        m.firstElementChild.innerHTML = `Belum ada <b>${url}</b>.<br>Taruh <b>scene.json</b> di <b>public/</b> dan model <b>.glb</b> di <b>public/models/</b>, lalu reload.<br><br>Coba contoh: <b>?scene=/scene.example.json</b>`;
+      }
+    }
 
-      scene.add(g);
-      pins[d.ip] = { ball, ring, stem, statusEl: card.querySelector(".st") };
-    });
+    // ===================== LIVE STATUS (link by IP) =====================
+    const COL = { UP: 0x22c55e, DOWN: 0xef4444, UNKNOWN: 0x64748b };
+    let lastDevices = {};
+    function applyStatus(list) {
+      list.forEach((dev) => {
+        const p = devices[dev.ip]; if (!p) return;
+        const hex = COL[dev.status] ?? COL.UNKNOWN;
+        (p.parts.ball) && (p.parts.ball.material.color.setHex(hex), p.parts.ball.material.emissive.setHex(hex));
+        (p.parts.stem) && p.parts.stem.material.color.setHex(hex);
+        (p.parts.ring) && p.parts.ring.material.color.setHex(hex);
+        p.statusEl.className = "st " + (dev.status === "UP" ? "up" : dev.status === "DOWN" ? "down" : "unk");
+        p.statusEl.textContent = dev.status || "—";
+      });
+      const mine = list.filter((d) => devices[d.ip]);
+      const up = mine.filter((d) => d.status === "UP").length, total = Object.keys(devices).length, down = total - up;
+      nTotal.textContent = total; nUp.textContent = up; nDown.textContent = down; upBig.textContent = up;
+      const health = total ? Math.round((up / total) * 100) : 100;
+      hVal.textContent = health + "%"; hBar.style.width = health + "%";
+    }
 
-    // ---- render loop ----
     addEventListener("resize", () => {
       camera.aspect = W() / H(); camera.updateProjectionMatrix();
       renderer.setSize(W(), H()); labelRenderer.setSize(W(), H());
     });
-    (function loop() {
-      requestAnimationFrame(loop);
-      controls.update();
-      renderer.render(scene, camera);
-      labelRenderer.render(scene, camera);
-    })();
+    (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); labelRenderer.render(scene, camera); })();
 
-    /* ============================================================
-       LIVE LINK — connect scene pins to REAL devices via /ws.
-       Matching key = IP. This is the whole "how do pins connect to
-       real devices" answer, in code.
-       ============================================================ */
-    const COL = { UP: 0x22c55e, DOWN: 0xef4444, UNKNOWN: 0x64748b };
-    function applyStatus(devices) {
-      let up = 0;
-      devices.forEach((dev) => {
-        const p = pins[dev.ip];                 // <-- link: pin whose ip === device.ip
-        if (!p) return;
-        const hex = COL[dev.status] ?? COL.UNKNOWN;
-        p.ball.material.color.setHex(hex); p.ball.material.emissive.setHex(hex);
-        p.stem.material.color.setHex(hex); p.ring.material.color.setHex(hex);
-        p.statusEl.className = "st " + (dev.status === "UP" ? "up" : dev.status === "DOWN" ? "down" : "unk");
-        p.statusEl.textContent = dev.status || "—";
-      });
-      // panel stats (only our 2 tracked devices)
-      const mine = devices.filter((d) => pins[d.ip]);
-      up = mine.filter((d) => d.status === "UP").length;
-      const total = DEVICES.length, down = total - up;
-      document.getElementById("nTotal").textContent = total;
-      document.getElementById("nUp").textContent = up;
-      document.getElementById("nDown").textContent = down;
-      document.getElementById("upBig").textContent = up;
-      const health = total ? Math.round((up / total) * 100) : 100;
-      document.getElementById("hVal").textContent = health + "%";
-      document.getElementById("hBar").style.width = health + "%";
-    }
-    function setConn(ok) {
-      document.getElementById("cdot").classList.toggle("on", ok);
-      document.getElementById("clabel").textContent = ok ? "LIVE" : "Terputus";
-    }
+    function setConn(ok) { cdot.classList.toggle("on", ok); clabel.textContent = ok ? "LIVE" : "Terputus"; }
     (function connect() {
       const proto = location.protocol === "https:" ? "wss" : "ws";
       const ws = new WebSocket(`${proto}://${location.host}/ws`);
       ws.onopen = () => setConn(true);
       ws.onclose = () => { setConn(false); setTimeout(connect, 3000); };
       ws.onerror = () => ws.close();
-      ws.onmessage = (e) => {
-        let m; try { m = JSON.parse(e.data); } catch { return; }
-        if (m.devices) applyStatus(m.devices);
-      };
+      ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.devices) { m.devices.forEach((d) => (lastDevices[d.ip] = d)); applyStatus(m.devices); } };
     })();
+
+    loadScene();
   </script>
 </body>
 </html>

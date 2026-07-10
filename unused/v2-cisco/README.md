@@ -1,51 +1,50 @@
 # v2 — 3D Monitoring gaya Cisco (standalone, parkir)
 
 Prototipe v2 **berdiri sendiri dalam satu file**: `v2.html`.
-Isi: 1 tempat, 1 scene, **2 titik device**, tampilan patokan **Cisco Spaces**
-(flat/clean, tanpa glow). Disimpan di `unused/` supaya repo rapi dan tidak
-mengganggu v1 — tinggal diaktifkan kalau mau dilanjut.
+Memuat **scene.json buatanmu** (hasil Scene Builder) + model `.glb` dari
+`/models/`, lalu menempel status device live. Tampilan patokan **Cisco Spaces**
+(flat/clean, tanpa glow): kartu status melayang + panel kiri occupancy.
 
-## Mengaktifkan (kalau lagi pengen bikin)
-File di `unused/` **tidak** disajikan server (Express hanya menyajikan `public/`).
-Untuk menjalankan:
+Disimpan di `unused/` agar repo rapi & tidak mengganggu v1 — tinggal aktifkan
+kalau mau dilanjut.
+
+## Mengaktifkan
+File di `unused/` tidak disajikan server (Express hanya menyajikan `public/`).
 
 ```bash
-cp unused/v2-cisco/v2.html public/v2.html
+cp unused/v2-cisco/v2.html public/v2.html      # 1) salin halaman
+# 2) taruh scene.json kamu di  public/scene.json
+# 3) taruh model 3D di          public/models/*.glb   (folder yang seharusnya)
 npm start
 # buka http://localhost:10101/v2.html
 ```
 
-Butuh server jalan karena file ini memakai:
-- `/vendor/three/…` (Three.js yang sudah di-vendor di `public/vendor/`)
-- `/ws` (WebSocket status device — sama dengan v1)
+Butuh server jalan karena memakai `/vendor/three/…`, `/scene.json`, `/models/…`, dan `/ws`.
 
-Kalau selesai coba dan mau merapikan lagi: `rm public/v2.html`.
+Mau coba pakai contoh dulu: `http://localhost:10101/v2.html?scene=/scene.example.json`
+Selesai coba & mau rapikan lagi: `rm public/v2.html`.
 
-## Cara pin device nyambung ke device asli
-**Jembatannya = IP.** Tiap titik device di scene punya field `ip`. Server
-mengirim daftar device live via `/ws`, tiap item punya `ip` + `status`.
-Kode mencocokkan `device.ip === pin.ip`, lalu mewarnai pin
-(**hijau = UP, merah = DOWN**) dan mengisi kartu status melayang.
-
-Mau ganti device yang dipantau? Edit array `DEVICES` di dalam `v2.html`:
-
-```js
-const DEVICES = [
-  { ip: "172.19.88.19", name: "DCS QI F4",        x: -5.5, z: 0 },
-  { ip: "172.19.88.16", name: "DCS PLAYMAKER F4", x:  5.5, z: 0 },
-];
+## Folder yang seharusnya
 ```
+public/
+  v2.html            ← halaman v2 (hasil salin dari sini)
+  scene.json         ← scene buatanmu (dari Scene Builder → Simpan)
+  models/
+    inject.glb       ← model 3D yang direferensikan scene.json
+    forklift.glb
+```
+Ganti scene = ganti `public/scene.json`. Tambah 3D = taruh `.glb` di `public/models/`
+dan referensikan path-nya lewat Scene Builder (field Path model).
 
-- `ip`   → device asli yang dipantau (kunci pencocokan).
-- `name` → teks di kartu.
-- `x,z`  → posisi titik di scene (meter).
+## Cara pin nyambung ke device asli
+**Jembatannya = IP.** Pin punya `ip`, model punya `deviceIp`. Server kirim
+device live via `/ws` (punya `ip` + `status`). Kode mencocokkan
+`device.ip === pin.ip` (atau `model.deviceIp`) → warnai penanda + kartu status
+(**hijau UP / merah DOWN**). Tidak ada konfigurasi lain: samakan IP = tersambung.
 
-Tidak ada konfigurasi lain: samakan `ip` = otomatis tersambung.
-
-## Hubungan dengan tool v2 lain (yang sudah ada di `public/`)
-File ini versi ringkas/parkir. Alur penuh v2 ada di:
-- `scene-builder.html` — bikin denah 3D (tembok/lantai/pintu/pin/teks) → export `scene.json`.
-- `scene-view.html` — muat `scene.json` + status live (pola linking yang sama, by-IP).
-
-`v2.html` ini mengambil pola yang sama tapi scene-nya di-hardcode di satu file,
-supaya gampang jadi titik awal eksperimen mandiri.
+## Hubungan dengan tool v2 lain (di `public/`)
+- `scene-builder.html` — bikin scene (tembok/lantai/pintu/pin/teks/model) → **Simpan scene.json**.
+- `scene-view.html` — versi runtime "resmi" (WYSIWYG dengan Scene Builder: ada
+  tooltip + panel detail per device).
+- `v2.html` (ini) — versi presentasi **Cisco flat** dari scene yang sama, dalam
+  satu file mandiri. Sumber scene & model identik (`scene.json` + `/models/`).
