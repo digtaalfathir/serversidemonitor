@@ -93,15 +93,10 @@ flat/clean, low-poly** (Cisco pun begitu — lihat referensi), dan gampang diraw
 - [x] **B1 — Edit objek yang sudah ada** (M) ✅ DONE
   - Pilih tembok → panel "Tembok Terpilih": ubah tinggi/tebal/warna/tutup-loop; **drag titik kuning** di sudut untuk geser vertex; daftar lubang (edit lebar/posisi/atas/ambang + hapus).
 - [x] **B2 — Undo / Redo** (M) ✅ DONE — snapshot scene sebelum tiap aksi (buat/hapus/geser/edit). Tombol ↶/↷ + Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z). Kamera tak ikut berubah saat undo.
-- [ ] **B3 — Simpan ke server (bukan hanya download)** (M)
-  - Endpoint POST `/api/scene` (v2, backend terpisah) untuk menulis `public/scene.json`.
-  - Tombol "Simpan ke server" di builder → tidak perlu pindah file manual.
-- [ ] **B4 — Katalog model** (M)
-  - List `.glb` di `public/models/` (butuh endpoint list), pratinjau, drag ke scene.
-- [ ] **B5 — Snapping & guide lanjut** (S)
-  - Snap ke titik/tembok lain, tampilkan garis bantu sejajar, ukuran antar objek.
-- [ ] **B6 — Builder benar-benar standalone** (M)
-  - Paket 1 halaman + aset lokal, bisa dibuka tanpa seluruh app (dokumentasi + folder mandiri).
+- [ ] **B3 — Simpan ke server** ⏭️ SKIP (sengaja — v2 mau berdiri sendiri tanpa backend tulis-file).
+- [x] **B4 — Katalog model** (M) ✅ DONE — manifest statis `models/models.json` (tanpa endpoint, cocok standalone) → panel "Katalog Model": klik taruh di tengah / **drag** ke lantai. Tombol ⟳ refresh.
+- [x] **B5 — Snapping & guide lanjut** (S) ✅ DONE — snap ke vertex tembok lain (marker hijau) + garis bantu sejajar (align x/z), berlaku saat gambar tembok & geser vertex. Angle-snap "Lurus" tetap.
+- [x] **B6 — Builder standalone** (M) ✅ DONE — v2 sudah app terpisah (`npm run v2`); Builder tak butuh backend (WS opsional). Dokumentasi `v2/README.md` (struktur folder, cara jalan `npx serve v2/public`, tak bergantung v1).
 
 ---
 

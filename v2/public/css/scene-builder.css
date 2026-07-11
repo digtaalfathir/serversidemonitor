@@ -74,6 +74,15 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:po
 #objList .x:hover{color:#fca5a5}
 .empty{font-size:11px;color:var(--text-dim);font-style:italic;padding:6px}
 
+/* model catalog (B4) */
+#catalogList{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto}
+.cat-item{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;
+  cursor:grab;font-size:12px;background:rgba(255,255,255,0.02);transition:all .12s}
+.cat-item:hover{background:rgba(99,102,241,0.12);border-color:rgba(99,102,241,0.4)}
+.cat-item:active{cursor:grabbing}
+.cat-item .cat-ic{font-size:16px}
+.cat-item .cat-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 /* ---- status bar ---- */
 .status{grid-column:1/3;display:flex;align-items:center;gap:16px;padding:7px 16px;font-size:11.5px;
   border-top:1px solid var(--border);background:rgba(10,14,26,0.85);color:var(--text-dim)}

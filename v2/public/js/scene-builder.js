@@ -144,6 +144,7 @@ function init() {
   window.addEventListener("resize", onResize);
   animate();
   connectWSForIps();
+  loadCatalog();
 }
 
 function animate() {
@@ -212,16 +213,51 @@ function setNdc(e) {
   ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
 }
-// angle-snap the wall cursor relative to the last placed point ("Lurus")
-function wallCursor(p) {
-  if (!wallDraft || !wallDraft.pts.length || !$("wallStraight")?.checked || !p) return p;
-  const prev = wallDraft.pts[wallDraft.pts.length - 1];
-  let ang = Math.atan2(p.z - prev.z, p.x - prev.x);
-  const step = Math.PI / 12;                     // 15°
-  ang = Math.round(ang / step) * step;
-  let len = Math.hypot(p.x - prev.x, p.z - prev.z);
-  if (snapOn) len = Math.round(len * 2) / 2;
-  return new THREE.Vector3(prev.x + Math.cos(ang) * len, 0, prev.z + Math.sin(ang) * len);
+// ---- B5: snapping (vertex-snap + axis-align guides) + angle-snap "Lurus" ----
+const SNAP_DIST = 0.6;
+let snapMarker = null, snapGuideX = null, snapGuideZ = null;
+function clearSnapViz() {
+  [snapMarker, snapGuideX, snapGuideZ].forEach((o) => o && scene.remove(o));
+  snapMarker = snapGuideX = snapGuideZ = null;
+}
+function collectVertices(exclude) {
+  const out = [];
+  objects.forEach((o) => { if (o.type === "wall" && o !== exclude) o.data.points.forEach((pt) => out.push({ x: pt[0], z: pt[1] })); });
+  if (wallDraft) wallDraft.pts.forEach((v) => out.push({ x: v.x, z: v.z }));
+  return out;
+}
+function guideLine() {
+  const g = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0x22e0a0, dashSize: 0.5, gapSize: 0.3, transparent: true, opacity: 0.6 }));
+  scene.add(g); return g;
+}
+// vertex-snap (menang) → angle-snap "Lurus" (relatif prev) → axis-align guide
+function resolveSnap(raw, exclude, angleSnap, prev) {
+  clearSnapViz();
+  if (!raw) return raw;
+  const cands = collectVertices(exclude);
+  let best = null, bd = SNAP_DIST;
+  cands.forEach((c) => { const d = Math.hypot(c.x - raw.x, c.z - raw.z); if (d < bd) { bd = d; best = c; } });
+  if (best) {
+    if (!snapMarker) { snapMarker = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.5, 24), new THREE.MeshBasicMaterial({ color: 0x22e0a0, side: THREE.DoubleSide })); snapMarker.rotation.x = -Math.PI / 2; scene.add(snapMarker); }
+    snapMarker.position.set(best.x, 0.15, best.z);
+    return new THREE.Vector3(best.x, 0, best.z);
+  }
+  let p = raw;
+  if (angleSnap && prev) {
+    let ang = Math.atan2(raw.z - prev.z, raw.x - prev.x);
+    const step = Math.PI / 12; ang = Math.round(ang / step) * step;
+    let len = Math.hypot(raw.x - prev.x, raw.z - prev.z); if (snapOn) len = Math.round(len * 2) / 2;
+    p = new THREE.Vector3(prev.x + Math.cos(ang) * len, 0, prev.z + Math.sin(ang) * len);
+  }
+  let ax = null, az = null;
+  cands.forEach((c) => { if (ax === null && Math.abs(c.x - p.x) < SNAP_DIST) ax = c.x; if (az === null && Math.abs(c.z - p.z) < SNAP_DIST) az = c.z; });
+  if (ax !== null) { p = new THREE.Vector3(ax, 0, p.z); snapGuideX = guideLine(); snapGuideX.geometry.setFromPoints([new THREE.Vector3(ax, 0.12, -200), new THREE.Vector3(ax, 0.12, 200)]); snapGuideX.computeLineDistances(); }
+  if (az !== null) { p = new THREE.Vector3(p.x, 0, az); snapGuideZ = guideLine(); snapGuideZ.geometry.setFromPoints([new THREE.Vector3(-200, 0.12, az), new THREE.Vector3(200, 0.12, az)]); snapGuideZ.computeLineDistances(); }
+  return p;
+}
+function wallSnapCursor(raw) {
+  const prev = wallDraft?.pts.length ? wallDraft.pts[wallDraft.pts.length - 1] : null;
+  return resolveSnap(raw, null, $("wallStraight")?.checked, prev);
 }
 
 // =====================================================================
@@ -240,28 +276,32 @@ function bindPointer() {
   });
   canvas.addEventListener("pointermove", (e) => {
     if (vDrag) {
-      const p = groundPoint(e); if (!p) return;
+      const raw = groundPoint(e); if (!raw) return;
+      const p = resolveSnap(raw, vDrag.rec, false, null);   // B5: snap vertex ke titik/align
       vDrag.rec.data.points[vDrag.vi] = [r3(p.x), r3(p.z)];
       rebuildWall(vDrag.rec); positionWallHandles(vDrag.rec);
       $("statCoords").textContent = `vertex → ${p.x.toFixed(1)}, ${p.z.toFixed(1)} m`;
       return;
     }
     const raw = groundPoint(e);
-    const p = mode === "wall" ? wallCursor(raw) : raw;
+    const p = mode === "wall" ? wallSnapCursor(raw) : raw;
     if (p) $("statCoords").textContent = `x: ${p.x.toFixed(1)}  z: ${p.z.toFixed(1)} m`;
     if (mode === "wall" && wallDraft) updateWallPreview(p);
     if (mode === "floor" && floorStart) updateFloorPreview(p);
   });
   canvas.addEventListener("pointerup", (e) => {
-    if (vDrag) { vDrag = null; controls.enabled = true; dn = null; refreshList(); return; }
+    if (vDrag) { vDrag = null; controls.enabled = true; dn = null; clearSnapViz(); refreshList(); return; }
     if (!dn) return;
     const moved = Math.hypot(e.clientX - dn.x, e.clientY - dn.y) > 5;
     dn = null;
     if (moved || draggingGizmo) return;
     tap(e);
   });
-  window.addEventListener("pointerup", () => { if (vDrag) { vDrag = null; controls.enabled = true; refreshList(); } });
+  window.addEventListener("pointerup", () => { if (vDrag) { vDrag = null; controls.enabled = true; clearSnapViz(); refreshList(); } });
   canvas.addEventListener("dblclick", () => { if (mode === "wall") finishWall(); });
+  // B4 — drag model dari katalog → jatuhkan ke lantai
+  canvas.addEventListener("dragover", (e) => e.preventDefault());
+  canvas.addEventListener("drop", (e) => { e.preventDefault(); const f = e.dataTransfer.getData("text/model-file"); if (f) loadModelByPath(f, groundPoint(e)); });
   document.addEventListener("keydown", (e) => {
     if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
     const ctrl = e.ctrlKey || e.metaKey;
@@ -279,7 +319,7 @@ function tap(e) {
   if (mode === "select") { pickAt(e); return; }
   if (mode === "door") { doorTap(e); return; }
   const raw = groundPoint(e);
-  const p = mode === "wall" ? wallCursor(raw) : raw;
+  const p = mode === "wall" ? wallSnapCursor(raw) : raw;
   if (!p) return;
   if (mode === "wall") addWallPoint(p);
   else if (mode === "floor") floorTap(p);
@@ -403,6 +443,7 @@ function finishWall() {
   return rec;
 }
 function cancelWall() {
+  clearSnapViz();
   if (!wallDraft) return;
   scene.remove(wallDraft.line, wallDraft.dots);
   wallDraft = null;
@@ -614,19 +655,47 @@ $("fileModel").onchange = (e) => {
     }, (err) => toast("Gagal parse model: " + err, false));
   });
 };
-function onModelLoaded(root, data) {
+function onModelLoaded(root, data, at) {
   root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   const box = new THREE.Box3().setFromObject(root);
   const size = box.getSize(new THREE.Vector3());
   const maxd = Math.max(size.x, size.y, size.z) || 1;
   if (maxd > 50 || maxd < 0.3) { root.scale.setScalar(5 / maxd); box.setFromObject(root); box.getSize(size); }
   const c = box.getCenter(new THREE.Vector3());
-  root.position.x += controls.target.x - c.x;
-  root.position.z += controls.target.z - c.z;
+  const tx = at ? at.x : controls.target.x, tz = at ? at.z : controls.target.z;
+  root.position.x += tx - c.x;
+  root.position.z += tz - c.z;
   root.position.y += -box.min.y;
   pushHistory();
   setMode("select");
   select(addObject("model", root, data));
+}
+// B4 — muat model dari path (katalog / drag-drop). `at` = titik lantai opsional.
+function loadModelByPath(file, at) {
+  const url = file.startsWith("/") ? file : "/models/" + file;
+  toast("Memuat " + file + "…", true);
+  loader.load(url, (gltf) => onModelLoaded(gltf.scene, { url, name: file.replace(/^.*\//, "").replace(/\.(glb|gltf)$/i, ""), deviceIp: "" }, at),
+    undefined, () => toast("Gagal memuat " + url + " (pastikan ada di public/models/)", false));
+}
+// B4 — katalog model dari manifest statis models.json
+function loadCatalog() {
+  fetch("/models/models.json", { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : { models: [] }))
+    .then((j) => renderCatalog(Array.isArray(j.models) ? j.models : []))
+    .catch(() => renderCatalog([]));
+}
+function renderCatalog(list) {
+  const box = $("catalogList"); if (!box) return;
+  if (!list.length) { box.innerHTML = `<div class="empty">Belum ada model. Tambah .glb ke public/models/ lalu daftarkan di models.json.</div>`; return; }
+  box.innerHTML = "";
+  list.forEach((m) => {
+    const el = document.createElement("div");
+    el.className = "cat-item"; el.draggable = true;
+    el.innerHTML = `<span class="cat-ic">📦</span><span class="cat-nm">${escapeHtml(m.name || m.file)}</span>`;
+    el.onclick = () => loadModelByPath(m.file);
+    el.addEventListener("dragstart", (e) => e.dataTransfer.setData("text/model-file", m.file));
+    box.appendChild(el);
+  });
 }
 
 // =====================================================================
@@ -963,6 +1032,7 @@ function bindUI() {
   ["areaW", "areaD", "areaShow"].forEach((id) => ($(id).oninput = updatePlot));
   $("btnWallBox").onclick = createWallBox;
   $("btnFloorFull").onclick = createFloorFull;
+  $("catRefresh").onclick = loadCatalog;   // B4
 
   // model fields
   $("modelName").oninput = () => { if (selected?.type === "model") { selected.data.name = $("modelName").value; refreshList(); } };
