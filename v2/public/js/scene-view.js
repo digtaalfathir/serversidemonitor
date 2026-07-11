@@ -36,6 +36,7 @@ const deviceObjs = {};      // ip -> { bc, name, status }
 const rayTargets = [];      // beacon balls (raycast)
 const labelEls = [];        // device labels (toggle)
 let selectedIp = null, dtTimer = null, labelsVisible = true;
+let camAnim = null, savedCam = null, lastT = 0;   // klik→zoom ke titik, tutup→balik
 const modelCache = {};      // A2: url -> Promise<gltf.scene> (load-once, lalu clone)
 
 const STATUS_HEX = { UP: 0x10b981, DOWN: 0xef4444 };
@@ -89,9 +90,11 @@ function initThree() {
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(600, 600),
-    new THREE.MeshStandardMaterial({ color: 0x0e131d, roughness: 0.98, metalness: 0 })
+    // gelap & polos (menyatu dengan background; envMapIntensity 0 supaya tak "memutih")
+    new THREE.MeshStandardMaterial({ color: 0x090d15, roughness: 1, metalness: 0, envMapIntensity: 0 })
   );
   ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.25;             // di bawah slab lantai → tepi lantai kelihatan
   scene.add(ground);
   // A3: grid dihilangkan (default off, tanpa toggle)
 
@@ -103,6 +106,7 @@ function initThree() {
 function animate() {
   requestAnimationFrame(animate);
   const t = clock ? clock.getElapsedTime() : 0;
+  const dt = Math.min(0.1, t - lastT); lastT = t;
   for (const ip in deviceObjs) {
     const o = deviceObjs[ip];
     if (o.status === "DOWN") {
@@ -114,7 +118,16 @@ function animate() {
       o.bc.halo.material.opacity = 0.1;
     }
   }
-  controls.update();
+  if (camAnim) {
+    camAnim.t += dt / camAnim.dur;
+    const k = Math.min(1, camAnim.t), e = k * k * (3 - 2 * k);   // smoothstep
+    camera.position.lerpVectors(camAnim.fromP, camAnim.toP, e);
+    controls.target.lerpVectors(camAnim.fromT, camAnim.toT, e);
+    camera.lookAt(controls.target);
+    if (k >= 1) { camAnim = null; controls.enabled = true; }
+  } else {
+    controls.update();
+  }
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
 }
@@ -265,12 +278,13 @@ const FLOOR_COL = { concrete: 0x3a3f47, green: 0x1f9e55, office: 0x8790a0 };
 function buildFloor(d) {
   const col = d.type === "custom" ? new THREE.Color(d.color).getHex() : (FLOOR_COL[d.type] ?? 0x3a3f47);
   const mat = new THREE.MeshStandardMaterial({
-    color: col, roughness: d.type === "green" ? 0.6 : 0.92, metalness: 0,
+    color: col, roughness: d.type === "green" ? 0.6 : 0.92, metalness: 0, envMapIntensity: 0.4,
     emissive: d.type === "green" ? 0x0c3f22 : 0x000000, emissiveIntensity: d.type === "green" ? 0.35 : 0,
   });
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(d.w, d.d), mat);
-  m.rotation.x = -Math.PI / 2;
-  m.position.set(d.x, 0.02 + (d.order || 0) * 0.006, d.z);   // order = which floor sits in front
+  const H = 0.25;                               // volume/tebal lantai (bukan plane tipis)
+  const topY = 0.03 + (d.order || 0) * 0.006;   // permukaan atas; order = mana yang di depan
+  const m = new THREE.Mesh(new THREE.BoxGeometry(d.w, H, d.d), mat);
+  m.position.set(d.x, topY - H / 2, d.z);
   m.renderOrder = d.order || 0;
   m.receiveShadow = true;
   return m;
@@ -457,8 +471,34 @@ function moveTooltip(e) {
 function hideTooltip() { tooltip.classList.remove("show"); }
 document.addEventListener("pointermove", (e) => { if (tooltip.classList.contains("show")) moveTooltip(e); });
 
-function openDetail(ip) { selectedIp = ip; if (deviceByIp[ip]) renderDetail(deviceByIp[ip]); detailPanel.classList.add("open"); }
-function closeDetail() { detailPanel.classList.remove("open"); selectedIp = null; if (dtTimer) { clearInterval(dtTimer); dtTimer = null; } }
+function startCamAnim(toP, toT) {
+  camAnim = { fromP: camera.position.clone(), toP, fromT: controls.target.clone(), toT, t: 0, dur: 0.5 };
+  controls.enabled = false;
+}
+function focusOn(worldPos) {
+  if (!savedCam) savedCam = { pos: camera.position.clone(), target: controls.target.clone() };
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  const toP = worldPos.clone().add(dir.multiplyScalar(13)).add(new THREE.Vector3(0, 4, 0));  // zoom sedang
+  startCamAnim(toP, worldPos.clone());
+}
+function restoreCam() {
+  if (!savedCam) return;
+  startCamAnim(savedCam.pos.clone(), savedCam.target.clone());
+  savedCam = null;
+}
+function openDetail(ip) {
+  selectedIp = ip;
+  if (deviceByIp[ip]) renderDetail(deviceByIp[ip]);
+  detailPanel.classList.add("open");
+  const o = deviceObjs[ip];
+  if (o) { const wp = new THREE.Vector3(); o.bc.group.getWorldPosition(wp); wp.y += 1.2; focusOn(wp); }
+}
+function closeDetail() {
+  detailPanel.classList.remove("open");
+  selectedIp = null;
+  if (dtTimer) { clearInterval(dtTimer); dtTimer = null; }
+  restoreCam();
+}
 function renderDetail(d) {
   const isDown = d.status === "DOWN";
   const avail = d.uptimeToday ?? 100;

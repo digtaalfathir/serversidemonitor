@@ -131,8 +131,8 @@
     scene.add(key);
 
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500),
-      new THREE.MeshStandardMaterial({ color: 0x0d1220, roughness: 0.98 }));
-    ground.rotation.x = -Math.PI / 2; scene.add(ground);
+      new THREE.MeshStandardMaterial({ color: 0x090d15, roughness: 1, metalness: 0 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.y = -0.25; scene.add(ground);
     // A3: grid dihilangkan (default off)
 
     let built = new THREE.Group(); scene.add(built);
@@ -189,10 +189,11 @@
     const FLOOR_COL = { concrete: 0x3a3f47, green: 0x1f9e55, office: 0x8790a0 };
     function buildFloor(d) {
       const col = d.type === "custom" ? new THREE.Color(d.color).getHex() : (FLOOR_COL[d.type] ?? 0x3a3f47);
-      const mat = new THREE.MeshStandardMaterial({ color: col, roughness: d.type === "green" ? 0.6 : 0.92,
+      const mat = new THREE.MeshStandardMaterial({ color: col, roughness: d.type === "green" ? 0.6 : 0.92, envMapIntensity: 0.4,
         emissive: d.type === "green" ? 0x0c3f22 : 0x000000, emissiveIntensity: d.type === "green" ? 0.3 : 0 });
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(d.w, d.d), mat);
-      m.rotation.x = -Math.PI / 2; m.position.set(d.x, 0.02 + (d.order || 0) * 0.006, d.z);
+      const H = 0.25, topY = 0.03 + (d.order || 0) * 0.006;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(d.w, H, d.d), mat);
+      m.position.set(d.x, topY - H / 2, d.z);
       m.renderOrder = d.order || 0; m.receiveShadow = true; return m;
     }
     function makeTextSprite(d) {

@@ -131,8 +131,8 @@ function init() {
   scene.add(hemi, amb, keyLight);
 
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400),
-    new THREE.MeshStandardMaterial({ color: 0x0e131d, roughness: 0.98, metalness: 0 }));
-  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; ground.name = "__ground";
+    new THREE.MeshStandardMaterial({ color: 0x090d15, roughness: 1, metalness: 0, envMapIntensity: 0 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.25; ground.receiveShadow = true; ground.name = "__ground";
   scene.add(ground);
   const grid = new THREE.GridHelper(160, 160, 0x263352, 0x172036);
   grid.position.y = 0.001; grid.material.transparent = true; grid.material.opacity = 0.45;
@@ -562,12 +562,13 @@ const FLOOR_COL = { concrete: 0x3a3f47, green: 0x1f9e55, office: 0x8790a0 };
 function buildFloor(d) {
   const col = d.type === "custom" ? new THREE.Color(d.color).getHex() : FLOOR_COL[d.type];
   const mat = new THREE.MeshStandardMaterial({
-    color: col, roughness: d.type === "green" ? 0.6 : 0.92, metalness: 0,
+    color: col, roughness: d.type === "green" ? 0.6 : 0.92, metalness: 0, envMapIntensity: 0.4,
     emissive: d.type === "green" ? 0x0c3f22 : 0x000000, emissiveIntensity: d.type === "green" ? 0.35 : 0,
   });
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(d.w, d.d), mat);
-  m.rotation.x = -Math.PI / 2;
-  m.position.set(d.x, 0.02 + (d.order || 0) * 0.006, d.z);   // higher order = in front
+  const H = 0.25;                               // volume/tebal lantai
+  const topY = 0.03 + (d.order || 0) * 0.006;   // permukaan atas; order tinggi = di depan
+  const m = new THREE.Mesh(new THREE.BoxGeometry(d.w, H, d.d), mat);
+  m.position.set(d.x, topY - H / 2, d.z);
   m.renderOrder = d.order || 0;
   m.receiveShadow = true;
   return m;
