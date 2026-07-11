@@ -44,6 +44,8 @@ let wallHandles = null;   // B1: draggable vertex handles for selected wall
 let vDrag = null;         // B1: { rec, vi } while dragging a wall vertex
 let selection = [];       // multi-select (array of records); `selected` = primary (terakhir)
 let selectionHelpers = []; // BoxHelper kuning saat pilih >1 objek
+const SNAP_DIST = 0.6;    // B5 snapping (jarak snap, meter)
+let snapMarker = null, snapGuideX = null, snapGuideZ = null;   // deklarasi di atas (dipakai clearSnapViz saat init)
 
 const lighting = {
   exposure: 1.05, sunElevation: 55, sunAzimuth: 40, sunIntensity: 2.1,
@@ -214,8 +216,6 @@ function setNdc(e) {
   raycaster.setFromCamera(ndc, camera);
 }
 // ---- B5: snapping (vertex-snap + axis-align guides) + angle-snap "Lurus" ----
-const SNAP_DIST = 0.6;
-let snapMarker = null, snapGuideX = null, snapGuideZ = null;
 function clearSnapViz() {
   [snapMarker, snapGuideX, snapGuideZ].forEach((o) => o && scene.remove(o));
   snapMarker = snapGuideX = snapGuideZ = null;
