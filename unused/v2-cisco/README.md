@@ -9,20 +9,23 @@ Disimpan di `unused/` agar repo rapi & tidak mengganggu v1 — tinggal aktifkan
 kalau mau dilanjut.
 
 ## Mengaktifkan
-File di `unused/` tidak disajikan server (Express hanya menyajikan `public/`).
+v2 sekarang **app terpisah** di folder `v2/` (server sendiri). File `unused/`
+tidak disajikan. Untuk mengaktifkan halaman Cisco ini, salin ke `v2/public/`:
 
 ```bash
-cp unused/v2-cisco/v2.html public/v2.html      # 1) salin halaman
-# 2) taruh scene.json kamu di  public/scene.json
-# 3) taruh model 3D di          public/models/*.glb   (folder yang seharusnya)
-npm start
-# buka http://localhost:10101/v2.html
+cp unused/v2-cisco/v2.html v2/public/v2.html   # 1) salin halaman ke app v2
+# 2) taruh scene.json kamu di  v2/public/scene.json
+# 3) taruh model 3D di          v2/public/models/*.glb
+npm run v2
+# buka http://localhost:10102/v2.html
 ```
 
-Butuh server jalan karena memakai `/vendor/three/…`, `/scene.json`, `/models/…`, dan `/ws`.
+Server v2 (`npm run v2`) mem-proxy `/ws` ke backend monitoring (default
+`ws://localhost:10101/ws`) untuk status live. Builder tetap jalan walau backend
+monitoring mati.
 
-Mau coba pakai contoh dulu: `http://localhost:10101/v2.html?scene=/scene.example.json`
-Selesai coba & mau rapikan lagi: `rm public/v2.html`.
+Contoh: `http://localhost:10102/v2.html?scene=/scene.example.json`
+Selesai coba: `rm v2/public/v2.html`.
 
 ## Folder yang seharusnya
 ```

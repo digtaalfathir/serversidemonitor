@@ -164,6 +164,21 @@ function clearBuilt() {
   selectedIp = null; closeDetail();
 }
 
+// A1 — frame seluruh scene di tengah (dipakai kalau scene.json tak punya camera)
+function fitCameraToScene() {
+  const box = new THREE.Box3().setFromObject(built);
+  if (box.isEmpty()) return;
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.z, size.y) || 10;
+  controls.target.copy(center);
+  const dist = maxDim * 1.4 + 6;
+  camera.position.set(center.x + dist * 0.6, Math.max(center.y + dist * 0.7, dist * 0.5), center.z + dist * 0.9);
+  camera.far = Math.max(3000, maxDim * 25);
+  camera.updateProjectionMatrix();
+  controls.update();
+}
+
 function buildFromScene(s, name) {
   clearBuilt();
   $("sceneInfo").textContent = `scene: ${name || "scene.json"}`;
@@ -180,6 +195,8 @@ function buildFromScene(s, name) {
     camera.position.fromArray(s.camera.position);
     controls.target.fromArray(s.camera.target);
     controls.update();
+  } else {
+    fitCameraToScene();                       // A1: kalau tak ada camera → auto-center/fit
   }
   // re-apply any live status we already have
   if (Object.keys(deviceByIp).length) applyStatus(Object.values(deviceByIp));
