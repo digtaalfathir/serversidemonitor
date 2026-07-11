@@ -106,7 +106,13 @@ body::before{content:'';position:fixed;inset:-50%;
 .fm-core{stroke:rgba(10,14,26,0.6);stroke-width:1}
 .fm-marker.status-up .fm-core{fill:var(--up);filter:drop-shadow(0 0 5px var(--up-glow))}
 .fm-marker.status-down .fm-core{fill:var(--down);filter:drop-shadow(0 0 6px var(--down-glow))}
+.fm-marker.status-unknown .fm-core{fill:#64748b}
 .fm-marker:hover .fm-ring{stroke-width:3.5}
+
+/* layout2d rooms/walls/labels (C2) */
+.lo-room{stroke:var(--bp-wall);stroke-width:1.5}
+.lo-label{fill:var(--bp-text);font-size:14px;font-weight:700;text-anchor:middle;dominant-baseline:central;letter-spacing:.5px;-webkit-user-select:none;user-select:none;pointer-events:none}
+.lo-wall{stroke:var(--bp-wall-strong);stroke-width:4;stroke-linejoin:round;fill:none}
 .fm-marker.selected .fm-ring{stroke:#fff;stroke-width:3}
 .mk-label-bg{fill:rgba(10,14,26,0.82);stroke:var(--border);stroke-width:1;rx:5}
 .mk-label{fill:var(--text-bright);font-size:11px;font-weight:600;text-anchor:middle;dominant-baseline:central}

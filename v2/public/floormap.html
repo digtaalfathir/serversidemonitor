@@ -13,7 +13,7 @@
   <!-- ============ HEADER ============ -->
   <header class="fm-header">
     <div>
-      <h1>🗺️ Device Monitoring <span class="fm-tag">FLOOR MAP · v2</span></h1>
+      <h1>🗺️ Device Monitoring <span class="fm-tag">2D · layout2d.json</span></h1>
       <div class="fm-sub" id="lastUpdate">Connecting...</div>
     </div>
     <div class="fm-header-right">
@@ -21,7 +21,8 @@
         <div class="conn-dot" id="connDot"></div>
         <span id="connLabel">Disconnected</span>
       </div>
-      <a class="fm-link" href="/">← Card View (v1)</a>
+      <a class="fm-link" href="/floormap-builder.html">Builder 2D</a>
+      <a class="fm-link" href="/">3D / Home</a>
     </div>
   </header>
 
@@ -31,15 +32,14 @@
     <div class="fm-chip up"><b id="upCount">0</b> Up</div>
     <div class="fm-chip down"><b id="downCount">0</b> Down</div>
     <div class="fm-divider"></div>
-    <select class="fm-select" id="floorSelect" title="Pilih denah lantai">
-      <option value="F1">Denah Lantai 1 — Factory 4 (contoh)</option>
-    </select>
+    <span class="fm-chip" id="layoutInfo" style="color:var(--text-dim)">layout: —</span>
     <div class="fm-health">Health Score: <span class="score" id="healthScore">100%</span></div>
     <div class="fm-divider"></div>
     <div class="fm-zoom">
       <button id="zoomOut" title="Zoom out">−</button>
       <button id="zoomIn" title="Zoom in">+</button>
       <button class="reset" id="zoomReset" title="Reset view">Reset</button>
+      <button class="reset" id="btnExport" title="Export SVG statik">Export SVG</button>
     </div>
   </div>
 
@@ -61,142 +61,6 @@
 
         <!-- ===== FLOOR PLAN (static blueprint) ===== -->
         <g id="floorplan">
-          <!-- drawing title -->
-          <text x="72" y="34" fill="var(--bp-text)" font-size="13" font-weight="700" letter-spacing="1">DENAH LANTAI 1 — FACTORY 4</text>
-          <text x="72" y="48" fill="var(--bp-text-dim)" font-size="9.5">skala ilustratif · koordinat device sementara (dummy)</text>
-
-          <!-- property / plot boundary -->
-          <rect class="plot-line" x="70" y="52" width="940" height="634" rx="4"/>
-
-          <!-- rooms -->
-          <rect class="room" x="140" y="90"  width="220" height="210"/>  <!-- CARPORT -->
-          <rect class="room" x="360" y="90"  width="200" height="210"/>  <!-- KAMAR 1 -->
-          <rect class="room" x="560" y="90"  width="200" height="210"/>  <!-- KAMAR 2 -->
-          <rect class="room" x="760" y="90"  width="200" height="210"/>  <!-- DAPUR -->
-          <rect class="room" x="140" y="300" width="220" height="170"/>  <!-- R.TAMU -->
-          <rect class="room" x="360" y="300" width="110" height="170"/>  <!-- NAIK -->
-          <rect class="room" x="470" y="300" width="290" height="170"/>  <!-- R.KELUARGA -->
-          <rect class="room outdoor" x="760" y="300" width="200" height="170"/> <!-- TERAS side -->
-          <rect class="room" x="140" y="470" width="220" height="180"/>  <!-- KAMAR 3 -->
-          <rect class="room" x="360" y="470" width="110" height="90"/>   <!-- WC 1 -->
-          <rect class="room" x="360" y="560" width="110" height="90"/>   <!-- WC 2 -->
-          <rect class="room outdoor" x="470" y="470" width="290" height="180"/> <!-- TERAS front -->
-          <rect class="room outdoor" x="760" y="470" width="200" height="180"/> <!-- TAMAN -->
-
-          <!-- outdoor hatch overlays -->
-          <rect x="760" y="300" width="200" height="170" fill="url(#hatch)" opacity="0.6" pointer-events="none"/>
-          <rect x="470" y="470" width="290" height="180" fill="url(#hatch)" opacity="0.6" pointer-events="none"/>
-          <rect x="140" y="90"  width="220" height="210" fill="url(#hatch)" opacity="0.5" pointer-events="none"/>
-
-          <!-- outer wall outline -->
-          <rect class="wall-outer" x="140" y="90" width="820" height="560"/>
-
-          <!-- ===== furniture ===== -->
-          <!-- carport: car -->
-          <g class="fur">
-            <rect class="fur-fill" x="186" y="150" width="128" height="84" rx="16"/>
-            <rect x="206" y="162" width="88" height="30" rx="7"/>
-            <circle cx="210" cy="236" r="9"/><circle cx="290" cy="236" r="9"/>
-          </g>
-          <!-- kamar 1 bed -->
-          <g class="fur"><rect class="fur-fill" x="398" y="110" width="112" height="100" rx="6"/><rect x="404" y="115" width="100" height="24" rx="4"/></g>
-          <!-- kamar 2 bed -->
-          <g class="fur"><rect class="fur-fill" x="598" y="110" width="112" height="100" rx="6"/><rect x="604" y="115" width="100" height="24" rx="4"/></g>
-          <!-- dapur kitchen counter -->
-          <g class="fur">
-            <rect class="fur-fill" x="764" y="96" width="190" height="22"/>
-            <rect class="fur-fill" x="932" y="96" width="22" height="150"/>
-            <circle cx="820" cy="107" r="5"/><circle cx="842" cy="107" r="5"/>
-          </g>
-          <!-- r.tamu sofa + coffee table -->
-          <g class="fur">
-            <rect class="fur-fill" x="150" y="362" width="140" height="32" rx="5"/>
-            <rect class="fur-fill" x="150" y="326" width="32" height="70" rx="5"/>
-            <rect x="212" y="332" width="72" height="30" rx="5"/>
-          </g>
-          <!-- stairs (NAIK) -->
-          <g class="stair" fill="none">
-            <line x1="368" y1="312" x2="462" y2="312"/><line x1="368" y1="328" x2="462" y2="328"/>
-            <line x1="368" y1="344" x2="462" y2="344"/><line x1="368" y1="360" x2="462" y2="360"/>
-            <line x1="368" y1="376" x2="462" y2="376"/><line x1="368" y1="392" x2="462" y2="392"/>
-            <line x1="368" y1="408" x2="462" y2="408"/><line x1="368" y1="424" x2="462" y2="424"/>
-            <line x1="415" y1="312" x2="415" y2="424"/>
-            <path d="M415 305 l-7 12 h14 z" fill="var(--bp-fur)" stroke="none"/>
-          </g>
-          <!-- r.keluarga dining table + chairs -->
-          <g class="fur">
-            <rect class="fur-fill" x="565" y="345" width="110" height="72" rx="10"/>
-            <rect x="588" y="330" width="26" height="12" rx="3"/><rect x="626" y="330" width="26" height="12" rx="3"/>
-            <rect x="588" y="420" width="26" height="12" rx="3"/><rect x="626" y="420" width="26" height="12" rx="3"/>
-            <rect x="548" y="368" width="12" height="26" rx="3"/><rect x="680" y="368" width="12" height="26" rx="3"/>
-          </g>
-          <!-- kamar 3 bed -->
-          <g class="fur"><rect class="fur-fill" x="152" y="482" width="112" height="100" rx="6"/><rect x="158" y="487" width="100" height="24" rx="4"/></g>
-          <!-- wc 1 -->
-          <g class="fur"><ellipse class="fur-fill" cx="415" cy="505" rx="11" ry="14"/><rect x="404" y="480" width="22" height="9" rx="2"/><circle cx="440" cy="540" r="7"/></g>
-          <!-- wc 2 -->
-          <g class="fur"><ellipse class="fur-fill" cx="415" cy="595" rx="11" ry="14"/><rect x="404" y="570" width="22" height="9" rx="2"/><circle cx="440" cy="630" r="7"/></g>
-
-          <!-- trees (taman + landscaping) -->
-          <g>
-            <circle class="tree" cx="820" cy="560" r="20"/><circle class="tree" cx="845" cy="580" r="16"/><circle class="tree" cx="810" cy="595" r="14"/>
-            <circle class="tree" cx="915" cy="600" r="18"/>
-            <circle class="tree" cx="1000" cy="120" r="17"/><circle class="tree" cx="1020" cy="150" r="13"/>
-            <circle class="tree" cx="105" cy="620" r="15"/><circle class="tree" cx="120" cy="120" r="14"/>
-          </g>
-
-          <!-- door swing arcs -->
-          <g class="door">
-            <path d="M436 300 A34 34 0 0 1 470 334"/><line x1="436" y1="300" x2="436" y2="266" stroke-dasharray="2 2"/>
-            <path d="M636 300 A34 34 0 0 1 670 334"/>
-            <path d="M250 470 A30 30 0 0 1 280 440" transform="rotate(180 265 470)"/>
-            <path d="M140 372 A30 30 0 0 1 170 402"/>
-          </g>
-
-          <!-- ===== room labels ===== -->
-          <g>
-            <text class="rlabel" x="250" y="118">CARPORT</text><text class="rlevel" x="250" y="132">-0.35</text>
-            <text class="rlabel" x="460" y="282">KAMAR</text><text class="rlevel" x="460" y="295">±0.00</text>
-            <text class="rlabel" x="660" y="282">KAMAR</text><text class="rlevel" x="660" y="295">±0.00</text>
-            <text class="rlabel" x="860" y="282">DAPUR</text><text class="rlevel" x="860" y="295">±0.00</text>
-            <text class="rlabel" x="250" y="452">R. TAMU</text><text class="rlevel" x="250" y="465">±0.00</text>
-            <text class="rlabel" x="415" y="452" font-size="11">NAIK</text>
-            <text class="rlabel" x="615" y="452">R. KELUARGA</text><text class="rlevel" x="615" y="465">±0.00</text>
-            <text class="rlabel" x="860" y="452">TERAS</text><text class="rlevel" x="860" y="465">-0.10</text>
-            <text class="rlabel" x="250" y="632">KAMAR</text><text class="rlevel" x="250" y="645">±0.00</text>
-            <text class="rlabel" x="415" y="512" font-size="10">WC</text>
-            <text class="rlabel" x="415" y="602" font-size="10">WC</text>
-            <text class="rlabel" x="615" y="632">TERAS</text><text class="rlevel" x="615" y="645">-0.10</text>
-            <text class="rlabel" x="860" y="632">TAMAN</text><text class="rlevel" x="860" y="645">-0.50</text>
-          </g>
-
-          <!-- ===== grid axes (reference bubbles) ===== -->
-          <g>
-            <!-- horizontal axes → numbers on right -->
-            <line class="axis-line" x1="960" y1="90"  x2="1040" y2="90"/>
-            <line class="axis-line" x1="960" y1="195" x2="1040" y2="195"/>
-            <line class="axis-line" x1="960" y1="300" x2="1040" y2="300"/>
-            <line class="axis-line" x1="960" y1="470" x2="1040" y2="470"/>
-            <line class="axis-line" x1="960" y1="560" x2="1040" y2="560"/>
-            <line class="axis-line" x1="960" y1="650" x2="1040" y2="650"/>
-            <circle class="axis-bubble" cx="1052" cy="90"  r="13"/><text class="axis-text" x="1052" y="90">1</text>
-            <circle class="axis-bubble" cx="1052" cy="195" r="13"/><text class="axis-text" x="1052" y="195">2</text>
-            <circle class="axis-bubble" cx="1052" cy="300" r="13"/><text class="axis-text" x="1052" y="300">3</text>
-            <circle class="axis-bubble" cx="1052" cy="470" r="13"/><text class="axis-text" x="1052" y="470">4</text>
-            <circle class="axis-bubble" cx="1052" cy="560" r="13"/><text class="axis-text" x="1052" y="560">5</text>
-            <circle class="axis-bubble" cx="1052" cy="650" r="13"/><text class="axis-text" x="1052" y="650">6</text>
-            <!-- vertical axes → letters on bottom -->
-            <line class="axis-line" x1="140" y1="650" x2="140" y2="700"/>
-            <line class="axis-line" x1="360" y1="650" x2="360" y2="700"/>
-            <line class="axis-line" x1="560" y1="650" x2="560" y2="700"/>
-            <line class="axis-line" x1="760" y1="650" x2="760" y2="700"/>
-            <line class="axis-line" x1="960" y1="650" x2="960" y2="700"/>
-            <circle class="axis-bubble" cx="140" cy="712" r="13"/><text class="axis-text" x="140" y="712">A</text>
-            <circle class="axis-bubble" cx="360" cy="712" r="13"/><text class="axis-text" x="360" y="712">B</text>
-            <circle class="axis-bubble" cx="560" cy="712" r="13"/><text class="axis-text" x="560" y="712">C</text>
-            <circle class="axis-bubble" cx="760" cy="712" r="13"/><text class="axis-text" x="760" y="712">D</text>
-            <circle class="axis-bubble" cx="960" cy="712" r="13"/><text class="axis-text" x="960" y="712">E</text>
-          </g>
         </g>
 
         <!-- ===== DEVICE MARKERS (injected by JS) ===== -->
@@ -206,6 +70,9 @@
 
     <!-- hover tooltip -->
     <div class="fm-tooltip" id="tooltip"></div>
+
+    <!-- pesan (mis. layout2d.json belum ada) -->
+    <div id="msg" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:30px;color:var(--text-dim);font-size:14px;line-height:1.7;background:rgba(10,14,26,0.6);backdrop-filter:blur(4px)"></div>
 
     <!-- legend -->
     <div class="fm-legend">

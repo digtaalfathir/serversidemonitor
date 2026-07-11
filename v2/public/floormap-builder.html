@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Floor-map Builder 2D — layout2d.json</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/scene-builder.css">
+  <style>
+    #view{background:#0a0e1a}
+    #c2d{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+    #c2d.sel{cursor:default}
+    .b-bgdot{fill:#141c30}
+    .b-room{stroke:#7c93b8;stroke-width:1.5;rx:4}
+    .b-room.sel{stroke:#ffcc22;stroke-width:2.5}
+    .b-label{fill:#8fa3c4;font:700 14px Inter,sans-serif;text-anchor:middle;dominant-baseline:central;user-select:none;pointer-events:none}
+    .b-wall{stroke:#aebfdd;stroke-width:4;fill:none;stroke-linejoin:round}
+    .b-wall.sel{stroke:#ffcc22}
+    .b-pin .p-core{fill:#818cf8;stroke:#0a0e1a;stroke-width:1.2}
+    .b-pin .p-ring{fill:none;stroke:#6366f1;stroke-width:2}
+    .b-pin.sel .p-ring{stroke:#ffcc22;stroke-width:3}
+    .b-pin .p-label{fill:#e2e8f0;font:600 11px Inter,sans-serif;text-anchor:middle}
+    .b-preview{fill:rgba(99,102,241,0.18);stroke:#6366f1;stroke-width:1.5;stroke-dasharray:6 4}
+    .b-draftline{stroke:#8ab4ff;stroke-width:2;fill:none}
+  </style>
+</head>
+<body>
+
+  <div class="tb">
+    <h1>🗺️ Floor-map 2D</h1>
+    <button class="btn mode active" id="mSelect" data-mode="select">Pilih</button>
+    <button class="btn mode" id="mRoom" data-mode="room">Ruangan</button>
+    <button class="btn mode" id="mWall" data-mode="wall">Tembok</button>
+    <button class="btn mode" id="mPin"  data-mode="pin">Pin Device</button>
+    <span class="sep"></span>
+    <button class="btn" id="btnDenah">Muat Denah</button>
+    <span class="spacer"></span>
+    <button class="btn" id="btnNew">Baru</button>
+    <button class="btn" id="btnLoad">Muat layout2d.json</button>
+    <button class="btn primary" id="btnSave">💾 Simpan layout2d.json</button>
+    <a class="btn link" href="/floormap.html">Viewer 2D →</a>
+    <input type="file" id="fileDenah" accept="image/*" hidden>
+    <input type="file" id="fileLayout" accept=".json,application/json" hidden>
+  </div>
+
+  <div id="view">
+    <svg id="c2d" viewBox="0 0 1120 780" preserveAspectRatio="xMidYMid meet">
+      <g id="vp">
+        <rect id="bg" x="0" y="0" width="1120" height="780" fill="#0c1120"/>
+        <image id="denahImg" x="0" y="0" width="1120" height="780" opacity="0.6" style="display:none" preserveAspectRatio="xMidYMid meet"></image>
+        <g id="content"></g>
+        <g id="draft"></g>
+      </g>
+    </svg>
+    <div class="overlay-tip" id="tip"></div>
+  </div>
+
+  <aside class="insp">
+    <div class="sec hidden" id="secRoomNew">
+      <h3>Ruangan (baru)</h3>
+      <div class="row"><label>Warna</label><input type="color" id="roomNewColor" value="#27324e"></div>
+      <div class="hint">Klik-drag untuk menggambar kotak ruangan. Nanti bisa diberi label.</div>
+    </div>
+    <div class="sec hidden" id="secWallNew">
+      <h3>Tembok</h3>
+      <div class="hint">Klik titik demi titik. <b>Enter</b>/dobel-klik = selesai · <b>Esc</b> batal.</div>
+    </div>
+    <div class="sec hidden" id="secPin">
+      <h3>Pin Device</h3>
+      <div class="row"><label>IP</label><input type="text" id="pinIp" list="ipList" placeholder="172.19.88.x"></div>
+      <div class="row"><label>Label</label><input type="text" id="pinLabel" placeholder="opsional"></div>
+      <datalist id="ipList"></datalist>
+      <div class="hint">Klik untuk menaruh titik device. IP menyambungkan ke status live di Viewer.</div>
+    </div>
+    <div class="sec hidden" id="secRoomSel">
+      <h3>Ruangan Terpilih</h3>
+      <div class="row"><label>Label</label><input type="text" id="roomLabel" placeholder="mis. AREA MESIN"></div>
+      <div class="row"><label>Lebar</label><input type="number" id="roomW" step="10"></div>
+      <div class="row"><label>Tinggi</label><input type="number" id="roomH" step="10"></div>
+      <div class="row"><label>Warna</label><input type="color" id="roomColor"></div>
+    </div>
+    <div class="sec hidden" id="secActions">
+      <h3>Aksi</h3>
+      <div class="row" style="gap:6px">
+        <button class="btn danger" id="btnDel" style="flex:1">Hapus (Delete)</button>
+      </div>
+    </div>
+    <div class="sec hidden" id="secDenah">
+      <h3>Denah (alas jiplak)</h3>
+      <div class="row"><label>Opacity</label><input type="range" id="denahOp" min="0" max="1" step="0.05" value="0.6"></div>
+      <div class="row"><label>Tampilkan</label><input type="checkbox" id="denahShow" checked></div>
+      <div class="hint">Alas untuk menjiplak — tidak ikut ke layout2d.json.</div>
+    </div>
+    <div class="sec" id="secList">
+      <h3>Objek</h3>
+      <ul id="objList"></ul>
+    </div>
+  </aside>
+
+  <div class="status">
+    <span id="statMode">Mode: <b>Pilih</b></span>
+    <span id="statCoords">—</span>
+    <span class="right"><span><input type="checkbox" id="snap" checked> snap 10</span><span id="statCount">0 objek</span></span>
+  </div>
+
+  <div id="toast"></div>
+  <script>
+    window.addEventListener("load", () => setTimeout(() => {
+      if (!window.__fbReady && !document.getElementById("fatal")) {
+        var v = document.getElementById("view") || document.body, d = document.createElement("div");
+        d.style.cssText = "position:absolute;inset:0;z-index:99;background:rgba(10,14,26,.96);color:#fca5a5;padding:22px;font:13px/1.6 ui-monospace,monospace;white-space:pre-wrap";
+        d.textContent = "Builder 2D gagal init. Buka Console (F12), kirim error merah pertama.";
+        v.appendChild(d);
+      }
+    }, 4000));
+  </script>
+  <script src="/js/floormap-builder.js"></script>
+</body>
+</html>

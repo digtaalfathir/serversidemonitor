@@ -1,118 +1,139 @@
 /* =====================================================================
-   Floor Map (v2) — client logic
-   - Connects to the SAME WebSocket as v1 (read-only here: no commands).
-   - Renders one live marker per device on the blueprint floor plan.
-   - Lightweight pan/zoom (no external library).
-   Standalone: does not import or modify any v1 code.
+   Floor Map 2D (v2 / Track 2D) — VIEWER
+   Reads a 2D layout (layout2d.json, authored in Floor-map Builder) and
+   renders rooms/walls + one live marker per PIN, coloured by device status
+   from the SAME /ws WebSocket. SVG-based, own data (NOT scene.json/3D).
    ===================================================================== */
 
-// ===== WebSocket (auto protocol/host, Nginx-friendly — same as v1) =====
 const protocol = location.protocol === "https:" ? "wss" : "ws";
 const WS_URL = `${protocol}://${location.host}/ws`;
 let ws;
 
-// ===== Device coordinate layout (SVG viewBox units: 0..1120 x 0..780) =====
-// Dummy positions for now — each known device sits in a room of the denah.
-// Devices without an entry get an auto-placed spot (deterministic from IP).
-const LAYOUT = {
-  "172.19.88.30": { x: 250, y: 200 }, // DCS MIXING MATERIAL  -> CARPORT
-  "172.19.88.16": { x: 455, y: 175 }, // DCS PLAYMAKER        -> KAMAR 1
-  "172.19.88.29": { x: 655, y: 175 }, // DCS POLES            -> KAMAR 2
-  "172.19.88.19": { x: 858, y: 175 }, // DCS QI               -> DAPUR
-  "172.19.88.20": { x: 250, y: 395 }, // DCS REPAIR IN LINE   -> R.TAMU
-  "172.19.88.24": { x: 620, y: 390 }, // DCS TASK FORCE       -> R.KELUARGA
-  "172.19.88.17": { x: 858, y: 390 }, // IOT NODE 001         -> TERAS
-  "172.19.88.21": { x: 250, y: 560 }, // Printer M#5          -> KAMAR 3
-};
-
-// Deterministic fallback position (so newly-added devices still appear)
-function autoPos(ip) {
-  let h = 0;
-  for (let i = 0; i < ip.length; i++) h = (h * 31 + ip.charCodeAt(i)) >>> 0;
-  return { x: 190 + (h % 720), y: 120 + ((h >> 8) % 500) };
-}
-function getPos(d) { return LAYOUT[d.ip] || autoPos(d.ip); }
-
-// ===== State =====
-let deviceByIp = {};     // live data keyed by ip
-let markerEls = {};      // ip -> <g> element
-let selectedIp = null;
-let dtTimer = null;
+// ===== state =====
+let deviceByIp = {};        // live data keyed by ip
+let markerByIp = {};        // ip -> <g> marker element
+let pins = [];              // from layout2d.json
+const pinByIp = {};         // ip -> pin {x,y,label}
+let selectedIp = null, dtTimer = null;
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("floormap");
 const viewport = document.getElementById("viewport");
+const floorplanG = document.getElementById("floorplan");
 const markersG = document.getElementById("markers");
 const stage = document.getElementById("stage");
 const tooltip = document.getElementById("tooltip");
 const detailPanel = document.getElementById("detailPanel");
 const detailContent = document.getElementById("detailContent");
+const msgEl = document.getElementById("msg");
+const $ = (id) => document.getElementById(id);
 
-// ===== WebSocket connection =====
+// ===================================================================
+//  LOAD LAYOUT (layout2d.json) → build floorplan + pins
+// ===================================================================
+async function loadLayout() {
+  const url = new URLSearchParams(location.search).get("layout") || "/layout2d.json";
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    const L = JSON.parse(await res.text());        // throws if SPA-fallback HTML
+    if (Array.isArray(L.viewBox)) svg.setAttribute("viewBox", L.viewBox.join(" "));
+    buildFloorplan(L);
+    buildPins(L.pins || []);
+    $("layoutInfo").textContent = "layout: " + (url.split("/").pop());
+  } catch (e) {
+    msgEl.style.display = "flex";
+    msgEl.innerHTML = `Belum ada <b>${url}</b>.<br>Buat di <b>Builder 2D</b> → Simpan <b>layout2d.json</b> di <b>v2/public/</b>.<br><br>Coba contoh: <b>?layout=/layout2d.example.json</b>`;
+    return;
+  }
+  connect();
+}
+
+function buildFloorplan(L) {
+  // keep the dotgrid background rect (first child of viewport); rebuild floorplan group
+  floorplanG.innerHTML = "";
+  (L.rooms || []).forEach((r) => {
+    const rect = mk("rect", { class: "lo-room", x: r.x, y: r.y, width: r.w, height: r.h, rx: 4,
+      fill: r.color || "rgba(124,147,184,0.05)" });
+    floorplanG.appendChild(rect);
+    if (r.label) {
+      const t = mk("text", { class: "lo-label", x: r.x + r.w / 2, y: r.y + r.h / 2 });
+      t.textContent = r.label;
+      floorplanG.appendChild(t);
+    }
+  });
+  (L.walls || []).forEach((w) => {
+    const pts = (w.points || []).map((p) => p.join(",")).join(" ");
+    const closeSeg = w.closed && (w.points || []).length > 2 ? " " + w.points[0].join(",") : "";
+    floorplanG.appendChild(mk("polyline", { class: "lo-wall", points: pts + closeSeg }));
+  });
+}
+
+function buildPins(pinList) {
+  Object.values(markerByIp).forEach((el) => el.remove());
+  markerByIp = {}; pins = pinList;
+  for (const k in pinByIp) delete pinByIp[k];
+  pinList.forEach((p) => {
+    pinByIp[p.ip] = p;
+    const el = makeMarker(p);
+    el.setAttribute("transform", `translate(${p.x} ${p.y})`);
+    setLabel(el, p.label || p.ip);
+    markersG.appendChild(el);
+    markerByIp[p.ip] = el;
+  });
+  applyStatus(Object.values(deviceByIp));
+}
+
+// ===================================================================
+//  WEBSOCKET + live status
+// ===================================================================
 function connect() {
   ws = new WebSocket(WS_URL);
   ws.onopen = () => setConn(true);
   ws.onclose = () => { setConn(false); setTimeout(connect, 3000); };
   ws.onerror = () => ws.close();
   ws.onmessage = (e) => {
-    let msg;
-    try { msg = JSON.parse(e.data); } catch { return; }
-    if (msg.type === "cmd_result") return; // this page issues no commands
-    if (msg.devices) { syncMarkers(msg.devices); updateSummary(msg.devices); }
-    if (msg.timestamp) {
-      document.getElementById("lastUpdate").textContent = `Last update: ${msg.timestamp}`;
-    }
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    if (msg.type === "cmd_result") return;
+    if (msg.devices) { applyStatus(msg.devices); updateSummary(msg.devices); }
+    if (msg.timestamp) $("lastUpdate").textContent = `Last update: ${msg.timestamp}`;
   };
 }
-
 function setConn(ok) {
-  document.getElementById("connDot").classList.toggle("connected", ok);
-  document.getElementById("connLabel").textContent = ok ? "Connected" : "Disconnected";
+  $("connDot").classList.toggle("connected", ok);
+  $("connLabel").textContent = ok ? "Connected" : "Disconnected";
 }
-
-// ===== Marker sync (create / update / remove without full rebuild) =====
-function syncMarkers(devices) {
-  const seen = new Set();
-  devices.forEach((d) => {
-    deviceByIp[d.ip] = d;
-    seen.add(d.ip);
-    const pos = getPos(d);
-    let el = markerEls[d.ip];
-    if (!el) { el = makeMarker(d); markersG.appendChild(el); markerEls[d.ip] = el; }
-    el.setAttribute("transform", `translate(${pos.x} ${pos.y})`);
-    const sev = d.severity || "LOW";
-    const status = (d.status || "").toLowerCase();
+// recolour each pin-marker by its matching device's live status (grey if unmapped)
+function applyStatus(devices) {
+  devices.forEach((d) => (deviceByIp[d.ip] = d));
+  pins.forEach((p) => {
+    const el = markerByIp[p.ip]; if (!el) return;
+    const d = deviceByIp[p.ip];
+    const status = d ? (d.status || "").toLowerCase() : "unknown";
+    const sev = (d && d.severity) || "LOW";
     let cls = `fm-marker status-${status} sev-${sev}`;
-    if (d.ip === selectedIp) cls += " selected";
+    if (p.ip === selectedIp) cls += " selected";
     el.setAttribute("class", cls);
-    setLabel(el, d.name);
+    setLabel(el, p.label || (d && d.name) || p.ip);
   });
-  // remove markers for devices that no longer exist
-  Object.keys(markerEls).forEach((ip) => {
-    if (!seen.has(ip)) { markerEls[ip].remove(); delete markerEls[ip]; if (ip === selectedIp) closeDetail(); }
-  });
-  // keep an open detail panel fresh
   if (selectedIp && deviceByIp[selectedIp]) renderDetail(deviceByIp[selectedIp]);
 }
 
-function makeMarker(d) {
+function makeMarker(p) {
   const g = document.createElementNS(SVG_NS, "g");
-  g.dataset.ip = d.ip;
-  const pulse = mk("circle", { class: "fm-pulse", r: 12 });
-  const ring = mk("circle", { class: "fm-ring", r: 12 });
-  const core = mk("circle", { class: "fm-core", r: 6.5 });
-  const labelBg = mk("rect", { class: "mk-label-bg", rx: 5, y: 20, height: 17 });
-  const label = mk("text", { class: "mk-label", y: 28.5 });
-  g.append(pulse, ring, core, labelBg, label);
-
-  // NOTE: marker "click" is handled in the pointerup logic below (not a click
-  // listener) so it stays reliable while the svg holds pointer capture for panning.
-  g.addEventListener("mouseenter", (e) => showTooltip(d.ip, e));
+  g.dataset.ip = p.ip;
+  g.setAttribute("class", "fm-marker status-unknown sev-LOW");
+  g.append(
+    mk("circle", { class: "fm-pulse", r: 12 }),
+    mk("circle", { class: "fm-ring", r: 12 }),
+    mk("circle", { class: "fm-core", r: 6.5 }),
+    mk("rect", { class: "mk-label-bg", rx: 5, y: 20, height: 17 }),
+    mk("text", { class: "mk-label", y: 28.5 })
+  );
+  g.addEventListener("mouseenter", (e) => showTooltip(p.ip, e));
   g.addEventListener("mousemove", (e) => moveTooltip(e));
   g.addEventListener("mouseleave", hideTooltip);
   return g;
 }
-
 function setLabel(el, name) {
   const label = el.querySelector(".mk-label");
   if (label.textContent === name) return;
@@ -122,41 +143,35 @@ function setLabel(el, name) {
   bg.setAttribute("x", -w / 2);
   bg.setAttribute("width", w);
 }
-
 function mk(tag, attrs) {
   const el = document.createElementNS(SVG_NS, tag);
   for (const k in attrs) el.setAttribute(k, attrs[k]);
   return el;
 }
 
-// ===== Summary bar =====
 function updateSummary(devices) {
-  const total = devices.length;
-  const up = devices.filter((d) => d.status === "UP").length;
-  const down = total - up;
-  document.getElementById("totalDevices").textContent = total;
-  document.getElementById("upCount").textContent = up;
-  document.getElementById("downCount").textContent = down;
+  const total = devices.length, up = devices.filter((d) => d.status === "UP").length;
+  $("totalDevices").textContent = total; $("upCount").textContent = up; $("downCount").textContent = total - up;
   const score = total > 0 ? ((up / total) * 100).toFixed(1) : "100.0";
-  const el = document.getElementById("healthScore");
-  el.textContent = `${score}%`;
+  const el = $("healthScore"); el.textContent = `${score}%`;
   el.style.color = score >= 95 ? "var(--up)" : score >= 80 ? "var(--high)" : "var(--down)";
 }
 
-// ===== Tooltip =====
+// ===================================================================
+//  TOOLTIP + DETAIL (unchanged behaviour)
+// ===================================================================
 function showTooltip(ip, e) {
   const d = deviceByIp[ip];
-  if (!d) return;
-  const isDown = d.status === "DOWN";
-  const lat = d.latency != null ? `${d.latency} ms` : "—";
-  const avail = d.uptimeToday ?? 100;
+  const p = pinByIp[ip];
+  const name = (d && d.name) || (p && p.label) || ip;
+  const isDown = d && d.status === "DOWN";
   tooltip.innerHTML = `
-    <div class="tt-name">${esc(d.name)}</div>
-    <div class="tt-ip">${d.ip}</div>
-    <div class="tt-row"><span>Status</span><span class="${isDown ? "tt-down" : "tt-up"}">${d.status || "—"}</span></div>
-    <div class="tt-row"><span>Latency</span><span>${lat}</span></div>
-    <div class="tt-row"><span>Availability</span><span>${avail}%</span></div>
-    <div class="tt-row"><span>Severity</span><span>${d.severity || "—"}</span></div>`;
+    <div class="tt-name">${esc(name)}</div>
+    <div class="tt-ip">${ip}</div>
+    <div class="tt-row"><span>Status</span><span class="${isDown ? "tt-down" : "tt-up"}">${(d && d.status) || "—"}</span></div>
+    <div class="tt-row"><span>Latency</span><span>${d && d.latency != null ? d.latency + " ms" : "—"}</span></div>
+    <div class="tt-row"><span>Availability</span><span>${(d && d.uptimeToday) ?? "—"}%</span></div>
+    <div class="tt-row"><span>Severity</span><span>${(d && d.severity) || "—"}</span></div>`;
   tooltip.classList.add("show");
   moveTooltip(e);
 }
@@ -166,141 +181,120 @@ function moveTooltip(e) {
   const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
   if (x + tw > r.width) x = e.clientX - r.left - tw - 16;
   if (y + th > r.height) y = r.height - th - 8;
-  tooltip.style.left = `${x}px`;
-  tooltip.style.top = `${y}px`;
+  tooltip.style.left = `${x}px`; tooltip.style.top = `${y}px`;
 }
 function hideTooltip() { tooltip.classList.remove("show"); }
 
-// ===== Detail panel =====
 function openDetail(ip) {
   selectedIp = ip;
-  Object.entries(markerEls).forEach(([k, el]) => el.classList.toggle("selected", k === ip));
-  const d = deviceByIp[ip];
-  if (d) renderDetail(d);
+  Object.entries(markerByIp).forEach(([k, el]) => el.classList.toggle("selected", k === ip));
+  if (deviceByIp[ip]) renderDetail(deviceByIp[ip]);
   detailPanel.classList.add("open");
 }
 function closeDetail() {
   detailPanel.classList.remove("open");
-  if (selectedIp && markerEls[selectedIp]) markerEls[selectedIp].classList.remove("selected");
+  if (selectedIp && markerByIp[selectedIp]) markerByIp[selectedIp].classList.remove("selected");
   selectedIp = null;
   if (dtTimer) { clearInterval(dtTimer); dtTimer = null; }
 }
-
 function renderDetail(d) {
   const isDown = d.status === "DOWN";
-  const lat = d.latency != null ? `${d.latency} ms` : "—";
-  const avg = d.avgLatency != null ? `${d.avgLatency} ms` : "—";
-  const peak = d.maxLatency != null ? `${d.maxLatency} ms` : "—";
   const avail = d.uptimeToday ?? 100;
   const hist = (d.history || []).slice(-6).reverse();
-
+  const p = pinByIp[d.ip] || { x: "—", y: "—" };
   detailContent.innerHTML = `
     <div class="dt-head">
-      <div>
-        <h2>${esc(d.name)}</h2>
-        <div class="dt-ip">${d.ip} · <span class="badge sev-${d.severity || "LOW"}">${d.severity || "—"}</span></div>
-      </div>
+      <div><h2>${esc(d.name)}</h2>
+        <div class="dt-ip">${d.ip} · <span class="badge sev-${d.severity || "LOW"}">${d.severity || "—"}</span></div></div>
       <button class="dt-close" id="dtClose">✕</button>
     </div>
     <div class="dt-body">
-      <div class="dt-status-banner ${isDown ? "down" : "up"}">
-        <span>${isDown ? "●" : "●"}</span>
-        <span>${isDown ? "DEVICE DOWN" : "DEVICE UP"}</span>
-        ${isDown && d.downSince ? `<span style="margin-left:auto;font-size:12px;font-weight:600" id="dtLive">—</span>` : ""}
-      </div>
+      <div class="dt-status-banner ${isDown ? "down" : "up"}"><span>●</span><span>${isDown ? "DEVICE DOWN" : "DEVICE UP"}</span>
+        ${isDown && d.downSince ? `<span style="margin-left:auto;font-size:12px;font-weight:600" id="dtLive">—</span>` : ""}</div>
       <div class="dt-section">Network Quality</div>
       <div class="dt-grid">
         <div class="dt-item"><div class="dt-label">Availability</div><div class="dt-val ${avail >= 99 ? "up" : "down"}">${avail}%</div></div>
-        <div class="dt-item"><div class="dt-label">Current Latency</div><div class="dt-val">${lat}</div></div>
-        <div class="dt-item"><div class="dt-label">Avg Latency</div><div class="dt-val">${avg}</div></div>
-        <div class="dt-item"><div class="dt-label">Peak Latency</div><div class="dt-val">${peak}</div></div>
-        <div class="dt-item"><div class="dt-label">Downtime Today</div><div class="dt-val">${fmtSec(d.downtimeTodaySec ?? 0)}</div></div>
-        <div class="dt-item"><div class="dt-label">Position</div><div class="dt-val" style="font-size:11px">${getPos(d).x}, ${getPos(d).y}</div></div>
+        <div class="dt-item"><div class="dt-label">Latency</div><div class="dt-val">${d.latency != null ? d.latency + " ms" : "—"}</div></div>
+        <div class="dt-item"><div class="dt-label">Avg</div><div class="dt-val">${d.avgLatency != null ? d.avgLatency + " ms" : "—"}</div></div>
+        <div class="dt-item"><div class="dt-label">Peak</div><div class="dt-val">${d.maxLatency != null ? d.maxLatency + " ms" : "—"}</div></div>
+        <div class="dt-item"><div class="dt-label">Downtime</div><div class="dt-val">${fmtSec(d.downtimeTodaySec ?? 0)}</div></div>
+        <div class="dt-item"><div class="dt-label">Posisi (x,y)</div><div class="dt-val" style="font-size:11px">${p.x}, ${p.y}</div></div>
       </div>
       <div class="dt-section">Device Info</div>
       <div class="dt-meta">
         <div class="m-row"><span class="m-k">Owner</span><span class="m-v">${esc(d.owner) || "—"}</span></div>
         <div class="m-row"><span class="m-k">Location</span><span class="m-v">${esc(d.location) || "—"}</span></div>
         <div class="m-row"><span class="m-k">Vendor</span><span class="m-v">${esc(d.vendor) || "—"}</span></div>
-        <div class="m-row"><span class="m-k">Notes</span><span class="m-v">${esc(d.notes) || "—"}</span></div>
       </div>
       <div class="dt-section">Recent Events</div>
-      <div class="dt-events">
-        ${hist.length ? hist.map((h) => `
-          <div class="dt-ev">
-            <span class="ev-dot ${h.status.toLowerCase()}"></span>
-            <span class="ev-time">${h.timestamp}</span>
-            <span class="ev-status" style="color:${h.status === "UP" ? "var(--up)" : "var(--down)"}">${h.status}</span>
-          </div>`).join("") : `<div class="dt-empty">Belum ada event tercatat.</div>`}
-      </div>
+      <div class="dt-events">${hist.length ? hist.map((h) => `
+        <div class="dt-ev"><span class="ev-dot ${h.status.toLowerCase()}"></span><span class="ev-time">${h.timestamp}</span>
+        <span class="ev-status" style="color:${h.status === "UP" ? "var(--up)" : "var(--down)"}">${h.status}</span></div>`).join("")
+      : `<div class="dt-empty">Belum ada event.</div>`}</div>
     </div>`;
-
-  document.getElementById("dtClose").onclick = closeDetail;
+  $("dtClose").onclick = closeDetail;
   startDtLive(d);
 }
-
 function startDtLive(d) {
   if (dtTimer) { clearInterval(dtTimer); dtTimer = null; }
-  const el = document.getElementById("dtLive");
-  if (!el || !d.downSince) return;
+  const el = $("dtLive"); if (!el || !d.downSince) return;
   const since = new Date(d.downSince.replace(" ", "T")).getTime();
   const tick = () => {
     const s = Math.max(0, Math.floor((Date.now() - since) / 1000));
-    const hh = String(Math.floor(s / 3600)).padStart(2, "0");
-    const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
-    const ss = String(s % 60).padStart(2, "0");
-    el.textContent = `Down ${hh}:${mm}:${ss}`;
+    el.textContent = `Down ${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
   };
-  tick();
-  dtTimer = setInterval(tick, 1000);
+  tick(); dtTimer = setInterval(tick, 1000);
 }
 
-// ===== Utils =====
 function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
-function fmtSec(s) {
-  if (!s) return "0s";
-  const m = Math.floor(s / 60), h = Math.floor(m / 60);
-  return h ? `${h}h ${m % 60}m` : m ? `${m}m ${s % 60}s` : `${s}s`;
+function fmtSec(s) { if (!s) return "0s"; const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? `${h}h ${m % 60}m` : m ? `${m}m ${s % 60}s` : `${s}s`; }
+
+// ===================================================================
+//  EXPORT SVG statik (C3)
+// ===================================================================
+const EXPORT_CSS = `
+svg{background:#0a0e1a}
+.lo-room{stroke:#7c93b8;stroke-width:1.5}
+.lo-label{fill:#8fa3c4;font:700 14px Inter,Arial,sans-serif;text-anchor:middle;dominant-baseline:central}
+.lo-wall{stroke:#aebfdd;stroke-width:4;fill:none}
+.fm-pulse{fill:none}
+.fm-ring{fill:rgba(10,14,26,0.85);stroke-width:2.5}
+.fm-marker.sev-CRITICAL .fm-ring{stroke:#ef4444}.fm-marker.sev-HIGH .fm-ring{stroke:#f59e0b}
+.fm-marker.sev-MEDIUM .fm-ring{stroke:#3b82f6}.fm-marker.sev-LOW .fm-ring{stroke:#6b7280}
+.fm-core{stroke:rgba(10,14,26,0.6);stroke-width:1}
+.fm-marker.status-up .fm-core{fill:#10b981}.fm-marker.status-down .fm-core{fill:#ef4444}.fm-marker.status-unknown .fm-core{fill:#64748b}
+.mk-label-bg{fill:rgba(10,14,26,0.82);stroke:rgba(255,255,255,0.1)}
+.mk-label{fill:#f8fafc;font:600 11px Inter,Arial,sans-serif;text-anchor:middle;dominant-baseline:central}`;
+function exportSVG() {
+  const clone = svg.cloneNode(true);
+  const vp = clone.querySelector("#viewport"); if (vp) vp.removeAttribute("transform");   // export unzoomed
+  const style = document.createElementNS(SVG_NS, "style"); style.textContent = EXPORT_CSS;
+  clone.insertBefore(style, clone.firstChild);
+  const s = new XMLSerializer().serializeToString(clone);
+  const blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n', s], { type: "image/svg+xml" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "floormap.svg"; a.click();
 }
 
 // ===================================================================
-//  PAN / ZOOM  (viewBox-aware, no external library)
+//  PAN / ZOOM (viewBox-aware)
 // ===================================================================
 let view = { x: 0, y: 0, k: 1 };
-const K_MIN = 0.5, K_MAX = 6;
-
-function applyView() {
-  viewport.setAttribute("transform", `translate(${view.x} ${view.y}) scale(${view.k})`);
-}
-// screen point -> SVG root user space (accounts for viewBox + aspect ratio)
-function toUser(clientX, clientY) {
-  const pt = svg.createSVGPoint();
-  pt.x = clientX; pt.y = clientY;
-  return pt.matrixTransform(svg.getScreenCTM().inverse());
-}
+const K_MIN = 0.4, K_MAX = 6;
+function applyView() { viewport.setAttribute("transform", `translate(${view.x} ${view.y}) scale(${view.k})`); }
+function toUser(clientX, clientY) { const pt = svg.createSVGPoint(); pt.x = clientX; pt.y = clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
 function zoomAt(clientX, clientY, factor) {
   const u = toUser(clientX, clientY);
   const newK = Math.min(K_MAX, Math.max(K_MIN, view.k * factor));
   const r = newK / view.k;
-  view.x = u.x - (u.x - view.x) * r;
-  view.y = u.y - (u.y - view.y) * r;
-  view.k = newK;
+  view.x = u.x - (u.x - view.x) * r; view.y = u.y - (u.y - view.y) * r; view.k = newK;
   applyView();
 }
-
-// wheel zoom
-svg.addEventListener("wheel", (e) => {
-  e.preventDefault();
-  zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.12 : 1 / 1.12);
-}, { passive: false });
-
-// drag pan
+svg.addEventListener("wheel", (e) => { e.preventDefault(); zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.12 : 1 / 1.12); }, { passive: false });
 let panning = false, didPan = false, startU = null, startView = null, downMarker = null;
 svg.addEventListener("pointerdown", (e) => {
   panning = true; didPan = false;
   downMarker = e.target.closest ? e.target.closest(".fm-marker") : null;
-  startU = toUser(e.clientX, e.clientY);
-  startView = { x: view.x, y: view.y };
+  startU = toUser(e.clientX, e.clientY); startView = { x: view.x, y: view.y };
   svg.setPointerCapture(e.pointerId);
 });
 svg.addEventListener("pointermove", (e) => {
@@ -308,34 +302,24 @@ svg.addEventListener("pointermove", (e) => {
   const u = toUser(e.clientX, e.clientY);
   const dx = u.x - startU.x, dy = u.y - startU.y;
   if (Math.abs(dx) + Math.abs(dy) > 3) { didPan = true; stage.classList.add("dragging"); }
-  view.x = startView.x + dx;
-  view.y = startView.y + dy;
-  applyView();
+  view.x = startView.x + dx; view.y = startView.y + dy; applyView();
 });
 function endPan(e) {
   if (!panning) return;
-  panning = false;
-  stage.classList.remove("dragging");
+  panning = false; stage.classList.remove("dragging");
   try { svg.releasePointerCapture(e.pointerId); } catch {}
-  // a press-release on a marker without dragging = a click on that marker
   if (!didPan && downMarker && downMarker.dataset.ip) openDetail(downMarker.dataset.ip);
   downMarker = null;
 }
 svg.addEventListener("pointerup", endPan);
 svg.addEventListener("pointercancel", endPan);
-
-// toolbar zoom buttons (zoom around stage center)
-function zoomCenter(factor) {
-  const r = svg.getBoundingClientRect();
-  zoomAt(r.left + r.width / 2, r.top + r.height / 2, factor);
-}
-document.getElementById("zoomIn").onclick = () => zoomCenter(1.25);
-document.getElementById("zoomOut").onclick = () => zoomCenter(1 / 1.25);
-document.getElementById("zoomReset").onclick = () => { view = { x: 0, y: 0, k: 1 }; applyView(); };
-
-// close detail with Escape
+function zoomCenter(factor) { const r = svg.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, factor); }
+$("zoomIn").onclick = () => zoomCenter(1.25);
+$("zoomOut").onclick = () => zoomCenter(1 / 1.25);
+$("zoomReset").onclick = () => { view = { x: 0, y: 0, k: 1 }; applyView(); };
+$("btnExport").onclick = exportSVG;
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDetail(); });
 
 // ===== Start =====
 applyView();
-connect();
+loadLayout();

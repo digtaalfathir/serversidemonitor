@@ -105,13 +105,9 @@ flat/clean, low-poly** (Cisco pun begitu — lihat referensi), dan gampang diraw
 > **Penting (revisi):** 2D punya data & builder **sendiri**, BUKAN dari `scene.json`.
 > Output = layout 2D (mis. `layout2d.json`) yang dipakai `floormap.html` (SVG yang sudah disukai).
 
-- [ ] **C1 — Builder 2D (denah → SVG)** (M)  *(catatan kartu: "belum ada")*
-  - Upload denah → jiplak jadi ruangan/tembok/pin **top-down** → simpan `layout2d.json`.
-  - Boleh meniru gaya "Muat Denah", tapi **output format 2D sendiri** (bukan scene.json 3D).
-- [ ] **C2 — Viewer 2D baca `layout2d.json`** (M)
-  - `floormap.html` (SVG) dibuat **membaca `layout2d.json`** (bukan denah hardcoded).
-  - Marker status live (pola IP sama).
-- [ ] **C3 — Export SVG statik** (S) — untuk dokumen/print.
+- [x] **C1 — Builder 2D (denah → SVG)** (M) ✅ DONE — `floormap-builder.html` + `js/floormap-builder.js` (SVG, no Three.js): mode Ruangan (drag rect + label/warna), Tembok (polyline), Pin (ip/label), select/drag-move/delete, Muat Denah (alas jiplak), pan (drag-kanan)/zoom, Simpan/Muat **layout2d.json**.
+- [x] **C2 — Viewer 2D baca `layout2d.json`** (M) ✅ DONE — `floormap.html`/`floormap.js` sekarang fetch `layout2d.json` (denah hardcoded dihapus), bangun rooms/walls, 1 marker per pin, status live by-IP (grey kalau tak terpetakan).
+- [x] **C3 — Export SVG statik** (S) ✅ DONE — tombol "Export SVG" di viewer → unduh `floormap.svg` self-contained (style di-inline).
 
 ---
 
