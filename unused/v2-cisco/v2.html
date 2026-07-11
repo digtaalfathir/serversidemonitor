@@ -97,6 +97,7 @@
     import { OrbitControls } from "three/addons/controls/OrbitControls.js";
     import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
     import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+    import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 
     const canvas = document.getElementById("c");
     const W = () => innerWidth, H = () => innerHeight;
@@ -111,8 +112,7 @@
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.setSize(W(), H());
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // A3: shadow OFF dari awal (flat & ringan)
 
     const labelRenderer = new CSS2DRenderer();
     labelRenderer.setSize(W(), H());
@@ -127,28 +127,39 @@
     scene.add(new THREE.HemisphereLight(0xa9bcd8, 0x0a0e18, 1.0));
     scene.add(new THREE.AmbientLight(0x24304a, 0.5));
     const key = new THREE.DirectionalLight(0xffffff, 1.6);
-    key.position.set(40, 60, 30); key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
-    const sc = key.shadow.camera; sc.left = -60; sc.right = 60; sc.top = 60; sc.bottom = -60; sc.far = 300;
-    key.shadow.bias = -0.0004; sc.updateProjectionMatrix();
+    key.position.set(40, 60, 30);
     scene.add(key);
 
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500),
       new THREE.MeshStandardMaterial({ color: 0x0d1220, roughness: 0.98 }));
-    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
-    const grid = new THREE.GridHelper(160, 160, 0x1c2740, 0x141c30);
-    grid.material.transparent = true; grid.material.opacity = 0.35; scene.add(grid);
+    ground.rotation.x = -Math.PI / 2; scene.add(ground);
+    // A3: grid dihilangkan (default off)
 
     let built = new THREE.Group(); scene.add(built);
     const devices = {};   // ip -> { parts:[], statusEl }
 
     // ===================== GEOMETRY BUILDERS (sama dgn Scene Builder) =====================
-    function buildWall(d) {
-      const g = new THREE.Group();
-      const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(d.color || "#cdd6e6"), roughness: 0.6, metalness: 0.05 });
+    // A2 — merge tembok per warna (1 mesh per warna) → tekan draw-call.
+    function buildWallsMerged(walls) {
+      const byColor = {};
+      walls.forEach((d) => collectWallGeoms(d, byColor));
+      const group = new THREE.Group();
+      for (const hex in byColor) {
+        const merged = BufferGeometryUtils.mergeGeometries(byColor[hex], false);
+        byColor[hex].forEach((g) => g.dispose());
+        if (!merged) continue;
+        const mesh = new THREE.Mesh(merged, new THREE.MeshStandardMaterial({ color: parseInt(hex), roughness: 0.6, metalness: 0.05 }));
+        group.add(mesh);
+      }
+      return group;
+    }
+    function collectWallGeoms(d, byColor) {
+      const hex = new THREE.Color(d.color || "#cdd6e6").getHex();
+      const arr = (byColor[hex] = byColor[hex] || []);
       const pts = d.points || [], openings = d.openings || [], H1 = d.height || 3, T = d.thickness || 0.15;
       const segs = []; for (let i = 0; i < pts.length - 1; i++) segs.push(i);
       if (d.closed && pts.length > 2) segs.push(pts.length - 1);
+      const q = new THREE.Quaternion(), eu = new THREE.Euler(), one = new THREE.Vector3(1, 1, 1);
       segs.forEach((i) => {
         const a = i < pts.length - 1 ? pts[i] : pts[pts.length - 1];
         const b = i < pts.length - 1 ? pts[i + 1] : pts[0];
@@ -156,11 +167,12 @@
         const ux = dx / L, uz = dz / L, ang = -Math.atan2(dz, dx);
         const add = (s, e, y0, y1) => {
           const len = e - s; if (len < 1e-3 || y1 - y0 < 1e-3) return; const mid = (s + e) / 2;
-          const m = new THREE.Mesh(new THREE.BoxGeometry(len, y1 - y0, T), mat);
-          m.position.set(a[0] + ux * mid, (y0 + y1) / 2, a[1] + uz * mid);
-          m.rotation.y = ang; m.castShadow = true; m.receiveShadow = true; g.add(m);
+          const geo = new THREE.BoxGeometry(len, y1 - y0, T);
+          eu.set(0, ang, 0); q.setFromEuler(eu);
+          geo.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(a[0] + ux * mid, (y0 + y1) / 2, a[1] + uz * mid), q, one));
+          arr.push(geo);
         };
-        const ops = openings.filter((o) => o.seg === i).sort((p, q) => p.dist - q.dist);
+        const ops = openings.filter((o) => o.seg === i).sort((p, r) => p.dist - r.dist);
         if (!ops.length) { add(-T / 2, L + T / 2, 0, H1); return; }
         let cur = 0;
         ops.forEach((op) => {
@@ -173,7 +185,6 @@
         });
         if (cur < L) add(cur, L + T / 2, 0, H1);
       });
-      return g;
     }
     const FLOOR_COL = { concrete: 0x3a3f47, green: 0x1f9e55, office: 0x8790a0 };
     function buildFloor(d) {
@@ -221,9 +232,14 @@
       g.add(ring, stem, ball); built.add(g);
       if (d.ip) registerDevice(d.ip, g, { ball, stem, ring, ballY: 2.5 }, makeCard(d.label || d.ip, d.ip));
     }
+    const modelCache = {};   // A2: load .glb sekali, lalu clone
+    function loadModelOnce(url) {
+      if (!modelCache[url]) modelCache[url] = new Promise((res, rej) => loader.load(url, (g) => res(g.scene), undefined, rej));
+      return modelCache[url];
+    }
     function addModel(d) {
-      loader.load(d.url, (gltf) => {
-        const root = gltf.scene;
+      loadModelOnce(d.url).then((proto) => {
+        const root = proto.clone(true);
         root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
         root.position.fromArray(d.position || [0, 0, 0]); root.rotation.y = d.rotationY || 0; root.scale.setScalar(d.scale || 1);
         built.add(root);
@@ -237,7 +253,7 @@
           registerDevice(d.deviceIp, g, { ring, ballY: topY }, makeCard(d.name || d.deviceIp, d.deviceIp));
           applyStatus(Object.values(lastDevices));
         }
-      }, undefined, () => console.warn("model tak ditemukan:", d.url));
+      }).catch(() => console.warn("model tak ditemukan:", d.url));
     }
 
     // A1 — frame seluruh scene di tengah (kalau scene.json tak punya camera)
@@ -259,7 +275,7 @@
       try {
         const res = await fetch(url, { cache: "no-store" });
         const s = JSON.parse(await res.text());   // throws kalau file HTML fallback
-        (s.walls || []).forEach((d) => built.add(buildWall(d)));
+        if (s.walls && s.walls.length) built.add(buildWallsMerged(s.walls));   // A2: merge per warna
         (s.floors || []).forEach((d) => built.add(buildFloor(d)));
         (s.texts || []).forEach((d) => built.add(makeTextSprite(d)));
         (s.pins || []).forEach(addPin);

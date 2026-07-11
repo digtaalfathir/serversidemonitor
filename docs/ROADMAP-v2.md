@@ -69,22 +69,22 @@ flat/clean, low-poly** (Cisco pun begitu — lihat referensi), dan gampang diraw
 
 > Catatan: "tanpa tembok pinggir" **bukan fitur** — cukup jangan gambar temboknya saat authoring.
 
-- [ ] **A1 — Kamera awal auto-center** (S)
+- [x] **A1 — Kamera awal auto-center** (S) ✅ DONE
   - Hitung bounding box seluruh objek scene → set target ke pusat, jarak kamera pas (fit).
   - Kalau `scene.json.camera` ada → pakai itu; kalau tidak → auto-fit.
   - Terapkan di `scene-view.js` dan `unused/v2-cisco/v2.html`.
   - *Acceptance:* buka scene apa pun → langsung ter-frame di tengah, tidak perlu geser manual.
 
-- [ ] **A2 — Performa: "smooth & tidak berat"** (M)
+- [x] **A2 — Performa: "smooth & tidak berat"** (M) ✅ DONE (merge tembok + model load-once/clone)
   - **Merge geometri tembok** sewarna via `BufferGeometryUtils.mergeGeometries` → tekan draw-call.
   - **Instancing** untuk model berulang (mis. 6 mesin identik = 1 `InstancedMesh`).
-  - Cap `pixelRatio` (sudah), matikan shadow opsional (toggle "mode ringan").
+  - Cap `pixelRatio` (sudah). Shadow default OFF (lihat A3).
   - Anjuran aset: model **low-poly**, tekstur kecil, `.glb` ringan (nanti Draco di F1).
   - Frustum culling default; hindari material transparan berlebih.
   - *Acceptance:* scene sedang (ratusan objek) tetap 60fps di laptop biasa; ada toggle "mode ringan".
 
-- [ ] **A3 — Toggle tampilan cepat** (S)
-  - Tombol: Labels on/off (ada), Grid on/off, Shadow on/off, "mode ringan".
+- [x] **A3 — Default tampilan ringan** (S) ✅ DONE
+  - Keputusan: **Grid & Shadow OFF dari awal, tanpa toggle** (flat & ringan). **Labels** tetap punya tombol on/off. (Tombol "Mode Ringan" dari A2 dihapus karena shadow sudah default off.)
 
 ---
 

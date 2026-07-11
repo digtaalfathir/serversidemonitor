@@ -12,6 +12,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 
 // ---- DOM ----
 const stage = document.getElementById("stage");
@@ -35,6 +36,7 @@ const deviceObjs = {};      // ip -> { bc, name, status }
 const rayTargets = [];      // beacon balls (raycast)
 const labelEls = [];        // device labels (toggle)
 let selectedIp = null, dtTimer = null, labelsVisible = true;
+const modelCache = {};      // A2: url -> Promise<gltf.scene> (load-once, lalu clone)
 
 const STATUS_HEX = { UP: 0x10b981, DOWN: 0xef4444 };
 const UNKNOWN_HEX = 0x6b7280;
@@ -60,8 +62,7 @@ function initThree() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(w, h);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // A3: shadow OFF dari awal (flat & ringan) — tanpa toggle.
 
   try {
     const pmrem = new THREE.PMREMGenerator(renderer);
@@ -83,13 +84,7 @@ function initThree() {
   hemi = new THREE.HemisphereLight(0x9fb4d8, 0x0a0e1a, 0.45);
   amb = new THREE.AmbientLight(0x1a2436, 0.22);
   keyLight = new THREE.DirectionalLight(0xffffff, 2.1);
-  keyLight.castShadow = true;
-  keyLight.shadow.mapSize.set(2048, 2048);
-  keyLight.shadow.bias = -0.0004;
-  keyLight.shadow.normalBias = 0.6;
-  const sc = keyLight.shadow.camera;
-  sc.left = -60; sc.right = 60; sc.top = 60; sc.bottom = -60; sc.near = 1; sc.far = 300;
-  sc.updateProjectionMatrix();
+  keyLight.position.set(40, 60, 30);       // arah default (dioverride scene.lighting)
   scene.add(hemi, amb, keyLight);
 
   const ground = new THREE.Mesh(
@@ -97,11 +92,8 @@ function initThree() {
     new THREE.MeshStandardMaterial({ color: 0x0e131d, roughness: 0.98, metalness: 0 })
   );
   ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
   scene.add(ground);
-  const grid = new THREE.GridHelper(160, 160, 0x263352, 0x172036);
-  grid.material.transparent = true; grid.material.opacity = 0.4;
-  scene.add(grid);
+  // A3: grid dihilangkan (default off, tanpa toggle)
 
   built = new THREE.Group();
   scene.add(built);
@@ -185,7 +177,7 @@ function buildFromScene(s, name) {
 
   if (s.lighting) applyLighting(s.lighting);
 
-  (s.walls || []).forEach((d) => built.add(buildWall(d)));
+  if (s.walls && s.walls.length) built.add(buildWallsMerged(s.walls));   // A2: 1 mesh per warna
   (s.floors || []).forEach((d) => built.add(buildFloor(d)));
   (s.texts || []).forEach((d) => built.add(makeTextSprite(d)));
   (s.pins || []).forEach((d) => addPinDevice(d));
@@ -216,30 +208,45 @@ function applyLighting(L) {
 // =====================================================================
 //  GEOMETRY BUILDERS (identical to Scene Builder → WYSIWYG)
 // =====================================================================
-function buildWall(d) {
-  const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(d.color || "#8fa3c4"), roughness: 0.6, metalness: 0.12, envMapIntensity: 0.9 });
-  const pts = d.points || [];
-  const openings = d.openings || [];
-  const H = d.height || 3, T = d.thickness || 0.15;
+// A2 — kumpulkan SEMUA geometri tembok (transform sudah di-bake ke vertex) per
+// warna, lalu MERGE jadi 1 mesh per warna → tekan draw-call drastis.
+// (Tembok tidak perlu di-raycast di viewer, jadi aman digabung.)
+function buildWallsMerged(walls) {
+  const byColor = {};
+  walls.forEach((d) => collectWallGeoms(d, byColor));
+  const group = new THREE.Group();
+  for (const hex in byColor) {
+    const merged = BufferGeometryUtils.mergeGeometries(byColor[hex], false);
+    byColor[hex].forEach((g) => g.dispose());
+    if (!merged) continue;
+    const mesh = new THREE.Mesh(merged, new THREE.MeshStandardMaterial({ color: parseInt(hex), roughness: 0.6, metalness: 0.12, envMapIntensity: 0.9 }));
+    group.add(mesh);
+  }
+  return group;
+}
+function collectWallGeoms(d, byColor) {
+  const hex = new THREE.Color(d.color || "#8fa3c4").getHex();
+  const arr = (byColor[hex] = byColor[hex] || []);
+  const pts = d.points || [], openings = d.openings || [], H = d.height || 3, T = d.thickness || 0.15;
   const segs = [];
   for (let i = 0; i < pts.length - 1; i++) segs.push(i);
   if (d.closed && pts.length > 2) segs.push(pts.length - 1);
+  const q = new THREE.Quaternion(), eu = new THREE.Euler(), one = new THREE.Vector3(1, 1, 1);
   segs.forEach((i) => {
     const a = i < pts.length - 1 ? pts[i] : pts[pts.length - 1];
     const b = i < pts.length - 1 ? pts[i + 1] : pts[0];
     const dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz);
     if (L < 1e-3) return;
     const ux = dx / L, uz = dz / L, ang = -Math.atan2(dz, dx);
-    const add = (s, e, y0, y1) => {
-      const len = e - s; if (len < 1e-3 || y1 - y0 < 1e-3) return;
-      const mid = (s + e) / 2;
-      const m = new THREE.Mesh(new THREE.BoxGeometry(len, y1 - y0, T), mat);
-      m.position.set(a[0] + ux * mid, (y0 + y1) / 2, a[1] + uz * mid);
-      m.rotation.y = ang; m.castShadow = true; m.receiveShadow = true;
-      g.add(m);
+    const add = (s, e2, y0, y1) => {
+      const len = e2 - s; if (len < 1e-3 || y1 - y0 < 1e-3) return;
+      const mid = (s + e2) / 2;
+      const geo = new THREE.BoxGeometry(len, y1 - y0, T);
+      eu.set(0, ang, 0); q.setFromEuler(eu);
+      geo.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(a[0] + ux * mid, (y0 + y1) / 2, a[1] + uz * mid), q, one));
+      arr.push(geo);
     };
-    const ops = openings.filter((o) => o.seg === i).sort((p, q) => p.dist - q.dist);
+    const ops = openings.filter((o) => o.seg === i).sort((p, r) => p.dist - r.dist);
     if (!ops.length) { add(-T / 2, L + T / 2, 0, H); return; }
     let cur = 0;
     ops.forEach((op) => {
@@ -252,7 +259,6 @@ function buildWall(d) {
     });
     if (cur < L) add(cur, L + T / 2, 0, H);
   });
-  return g;
 }
 
 const FLOOR_COL = { concrete: 0x3a3f47, green: 0x1f9e55, office: 0x8790a0 };
@@ -343,10 +349,14 @@ function addPinDevice(d) {
   registerDevice(d.ip, d.label || d.ip, bc);
 }
 
+// A2 — load tiap .glb SEKALI, lalu clone untuk tiap instance (hemat parse + share buffer GPU).
+function loadModelOnce(url) {
+  if (!modelCache[url]) modelCache[url] = new Promise((res, rej) => loader.load(url, (g) => res(g.scene), undefined, rej));
+  return modelCache[url];
+}
 function addModel(d) {
-  loader.load(d.url, (gltf) => {
-    const root = gltf.scene;
-    root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  loadModelOnce(d.url).then((proto) => {
+    const root = proto.clone(true);
     root.position.fromArray(d.position || [0, 0, 0]);
     root.rotation.y = d.rotationY || 0;
     root.scale.setScalar(d.scale || 1);
@@ -360,7 +370,7 @@ function addModel(d) {
       registerDevice(d.deviceIp, d.name || d.deviceIp, bc);
       if (Object.keys(deviceByIp).length) applyStatus(Object.values(deviceByIp));
     }
-  }, undefined, () => console.warn("model tak ditemukan:", d.url));
+  }).catch(() => console.warn("model tak ditemukan:", d.url));
 }
 
 // =====================================================================
