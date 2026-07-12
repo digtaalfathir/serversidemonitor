@@ -145,7 +145,6 @@ function init() {
   setMode("select");
   window.addEventListener("resize", onResize);
   animate();
-  connectWSForIps();
   loadCatalog();
 }
 
@@ -1123,15 +1122,4 @@ let toastT;
 function toast(msg, ok) {
   const t = $("toast"); t.textContent = msg; t.className = (ok ? "ok" : "err") + " show";
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 3200);
-}
-function connectWSForIps() {
-  try {
-    const proto = location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${proto}://${location.host}/ws`);
-    ws.onmessage = (e) => {
-      let m; try { m = JSON.parse(e.data); } catch { return; }
-      if (!m.devices) return;
-      $("ipList").innerHTML = m.devices.map((d) => `<option value="${d.ip}">${escapeHtml(d.name)}</option>`).join("");
-    };
-  } catch { /* ignore */ }
 }

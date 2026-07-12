@@ -31,20 +31,26 @@ const $ = (id) => document.getElementById(id);
 // ===================================================================
 //  LOAD LAYOUT (layout2d.json) → build floorplan + pins
 // ===================================================================
+async function tryFetch(u) {
+  try { const r = await fetch(u, { cache: "no-store" }); if (!r.ok) return null; return JSON.parse(await r.text()); }
+  catch { return null; }
+}
 async function loadLayout() {
-  const url = new URLSearchParams(location.search).get("layout") || "/layout2d.json";
-  try {
-    const res = await fetch(url, { cache: "no-store" });
-    const L = JSON.parse(await res.text());        // throws if SPA-fallback HTML
-    if (Array.isArray(L.viewBox)) svg.setAttribute("viewBox", L.viewBox.join(" "));
-    buildFloorplan(L);
-    buildPins(L.pins || []);
-    $("layoutInfo").textContent = "layout: " + (url.split("/").pop());
-  } catch (e) {
+  const param = new URLSearchParams(location.search).get("layout");
+  let L = await tryFetch(param || "/layout2d.json");
+  let info = param ? param.split("/").pop() : "layout2d.json";
+  if (!L && !param) { L = await tryFetch("/layout2d.example.json"); info = "contoh (example)"; }   // auto-fallback
+  if (!L) {
     msgEl.style.display = "flex";
-    msgEl.innerHTML = `Belum ada <b>${url}</b>.<br>Buat di <b>Builder 2D</b> → Simpan <b>layout2d.json</b> di <b>v2/public/</b>.<br><br>Coba contoh: <b>?layout=/layout2d.example.json</b>`;
+    msgEl.innerHTML = `Belum ada <b>layout2d.json</b>.<br>Buat di <b>Builder 2D</b> lalu simpan di <b>v2/public/</b>.<br><br>` +
+      `<a href="?layout=/layout2d.example.json" style="color:#818cf8;text-decoration:underline">Buka contoh →</a>`;
+    connect();     // tetap sambungkan WS supaya summary tetap jalan
     return;
   }
+  if (Array.isArray(L.viewBox)) svg.setAttribute("viewBox", L.viewBox.join(" "));
+  buildFloorplan(L);
+  buildPins(L.pins || []);
+  $("layoutInfo").textContent = "layout: " + info;
   connect();
 }
 
@@ -188,7 +194,7 @@ function hideTooltip() { tooltip.classList.remove("show"); }
 function openDetail(ip) {
   selectedIp = ip;
   Object.entries(markerByIp).forEach(([k, el]) => el.classList.toggle("selected", k === ip));
-  if (deviceByIp[ip]) renderDetail(deviceByIp[ip]);
+  renderDetail(deviceByIp[ip] || { ip, name: (pinByIp[ip] && pinByIp[ip].label) || ip });
   detailPanel.classList.add("open");
 }
 function closeDetail() {
@@ -198,8 +204,9 @@ function closeDetail() {
   if (dtTimer) { clearInterval(dtTimer); dtTimer = null; }
 }
 function renderDetail(d) {
+  const hasData = d.status != null;
   const isDown = d.status === "DOWN";
-  const avail = d.uptimeToday ?? 100;
+  const availTxt = hasData ? (d.uptimeToday ?? 100) + "%" : "—";
   const hist = (d.history || []).slice(-6).reverse();
   const p = pinByIp[d.ip] || { x: "—", y: "—" };
   detailContent.innerHTML = `
@@ -209,11 +216,12 @@ function renderDetail(d) {
       <button class="dt-close" id="dtClose">✕</button>
     </div>
     <div class="dt-body">
-      <div class="dt-status-banner ${isDown ? "down" : "up"}"><span>●</span><span>${isDown ? "DEVICE DOWN" : "DEVICE UP"}</span>
+      <div class="dt-status-banner ${isDown ? "down" : hasData ? "up" : ""}"${hasData ? "" : ' style="background:rgba(148,163,184,.12);color:#94a3b8;border:1px solid var(--border)"'}><span>●</span><span>${isDown ? "DEVICE DOWN" : hasData ? "DEVICE UP" : "TIDAK ADA DATA LIVE"}</span>
         ${isDown && d.downSince ? `<span style="margin-left:auto;font-size:12px;font-weight:600" id="dtLive">—</span>` : ""}</div>
+      ${hasData ? "" : `<div class="dt-empty" style="margin:0 0 12px">Device dengan IP ini belum melapor. Pastikan backend monitoring (npm start) jalan.</div>`}
       <div class="dt-section">Network Quality</div>
       <div class="dt-grid">
-        <div class="dt-item"><div class="dt-label">Availability</div><div class="dt-val ${avail >= 99 ? "up" : "down"}">${avail}%</div></div>
+        <div class="dt-item"><div class="dt-label">Availability</div><div class="dt-val ${hasData ? (d.uptimeToday >= 99 ? "up" : "down") : ""}">${availTxt}</div></div>
         <div class="dt-item"><div class="dt-label">Latency</div><div class="dt-val">${d.latency != null ? d.latency + " ms" : "—"}</div></div>
         <div class="dt-item"><div class="dt-label">Avg</div><div class="dt-val">${d.avgLatency != null ? d.avgLatency + " ms" : "—"}</div></div>
         <div class="dt-item"><div class="dt-label">Peak</div><div class="dt-val">${d.maxLatency != null ? d.maxLatency + " ms" : "—"}</div></div>

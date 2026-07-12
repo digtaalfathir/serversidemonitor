@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Scene Builder — 3D Digital Twin (v2)</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/scene-builder.css">
+  <link rel="stylesheet" href="builder.css">
   <script type="importmap">
   {
     "imports": {
@@ -140,9 +140,8 @@
     <!-- Pin -->
     <div class="sec hidden" id="secPin">
       <h3>Pin Device</h3>
-      <div class="row"><label>IP</label><input type="text" id="pinIp" list="ipList" placeholder="172.19.88.x"></div>
+      <div class="row"><label>IP</label><input type="text" id="pinIp" placeholder="172.19.88.x"></div>
       <div class="row"><label>Label</label><input type="text" id="pinLabel" placeholder="opsional"></div>
-      <datalist id="ipList"></datalist>
       <div class="hint">Klik di lantai untuk menaruh titik status. Pin ber-IP menyala hijau/merah di dashboard.</div>
     </div>
 
@@ -160,7 +159,7 @@
       <h3>Model Terpilih</h3>
       <div class="row"><label>Nama</label><input type="text" id="modelName" placeholder="mis. Mesin Inject 1"></div>
       <div class="row"><label>Path</label><input type="text" id="modelPath" placeholder="/models/x.glb"></div>
-      <div class="row"><label>Device IP</label><input type="text" id="modelIp" list="ipList" placeholder="opsional"></div>
+      <div class="row"><label>Device IP</label><input type="text" id="modelIp" placeholder="ketik manual, mis. 172.19.88.19"></div>
       <div class="row"><label>Gizmo</label>
         <div class="tmodes">
           <button class="btn active" id="tmMove" data-tm="translate">Geser</button>
@@ -229,6 +228,6 @@
       }, 5000);
     });
   </script>
-  <script type="module" src="/js/scene-builder.js"></script>
+  <script type="module" src="builder.js"></script>
 </body>
 </html>

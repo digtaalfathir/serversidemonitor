@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Builder v2 — 3D / 2D</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%}
+    body{font-family:'Inter',sans-serif;background:#0a0e1a;color:#e2e8f0;display:flex;flex-direction:column;height:100vh}
+    .bar{display:flex;align-items:center;gap:14px;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,.09);
+      background:rgba(10,14,26,.9);flex-shrink:0}
+    .bar .brand{font-size:14px;font-weight:800;background:linear-gradient(135deg,#818cf8,#a78bfa);
+      -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
+    .toggle{display:flex;border:1px solid rgba(255,255,255,.12);border-radius:9px;overflow:hidden}
+    .toggle button{padding:7px 20px;border:none;background:transparent;color:#8ea0bd;font:700 13px Inter,sans-serif;cursor:pointer;transition:all .15s}
+    .toggle button.active{background:rgba(99,102,241,.9);color:#fff}
+    .toggle button:not(.active):hover{background:rgba(255,255,255,.06);color:#e2e8f0}
+    .spacer{flex:1}
+    .lnk{font-size:12px;font-weight:600;color:#8ea0bd;text-decoration:none;padding:6px 12px;border:1px solid rgba(255,255,255,.09);border-radius:8px}
+    .lnk:hover{color:#fff;background:rgba(255,255,255,.06)}
+    iframe{flex:1;width:100%;border:none;display:block;background:#0a0e1a}
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <span class="brand">🏗️ Builder v2</span>
+    <div class="toggle">
+      <button id="b3d" class="active">3D</button>
+      <button id="b2d">2D</button>
+    </div>
+    <span class="spacer"></span>
+    <a class="lnk" id="lnkViewer" href="/scene-view.html" target="_blank">Buka Viewer ↗</a>
+    <a class="lnk" href="/">Home</a>
+  </div>
+  <iframe id="frame" title="builder"></iframe>
+
+  <script>
+    const frame = document.getElementById("frame");
+    const b3d = document.getElementById("b3d"), b2d = document.getElementById("b2d"), lnkViewer = document.getElementById("lnkViewer");
+    function setMode(m) {
+      frame.src = m === "2d" ? "2d/" : "3d/";
+      b3d.classList.toggle("active", m === "3d");
+      b2d.classList.toggle("active", m === "2d");
+      lnkViewer.href = m === "2d" ? "/floormap.html" : "/scene-view.html";
+      if (location.hash.slice(1) !== m) history.replaceState(null, "", "#" + m);
+    }
+    b3d.onclick = () => setMode("3d");
+    b2d.onclick = () => setMode("2d");
+    setMode(location.hash === "#2d" ? "2d" : "3d");
+  </script>
+</body>
+</html>

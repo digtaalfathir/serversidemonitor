@@ -9,13 +9,16 @@ v2/
   server.js            ← server statik v2 + proxy /ws → backend monitoring
   README.md            ← file ini
   public/
-    index.html         ← launcher (Builder / Viewer 3D / Peta 2D)
-    scene-builder.html  + js/scene-builder.js  + css/scene-builder.css
-    scene-view.html     + js/scene-view.js       (viewer 3D runtime)
-    floormap.html       + js/floormap.js         (peta 2D)
-    scene.example.json  ← contoh scene
-    models/             ← file .glb + models.json (katalog)
-    vendor/three/       ← Three.js lokal (offline, tanpa CDN)
+    index.html         ← launcher (Builder / Viewer 3D / Viewer 2D)
+    builder/           ← SATU app Builder, toggle 3D | 2D
+      index.html         (shell + toggle; embed 3d/ atau 2d/ via iframe)
+      3d/  index.html + builder.js + builder.css   (builder 3D, WebGL)
+      2d/  index.html + builder.js + builder.css   (builder 2D, SVG)
+    scene-view.html    + js/scene-view.js          (viewer 3D)
+    floormap.html      + js/floormap.js + css/floormap.css   (viewer 2D)
+    scene.example.json · layout2d.example.json     ← contoh
+    models/            ← file .glb + models.json (katalog)
+    vendor/three/      ← Three.js lokal (offline, tanpa CDN)
 ```
 
 ## Menjalankan
@@ -25,28 +28,26 @@ v2/
 npm start     # backend monitoring (v1) di :10101  — sumber status device
 npm run v2    # app v2 di :10102                    — buka http://localhost:10102
 ```
+Builder ada di **`/builder/`** — tinggal pilih **3D** atau **2D** di atas.
 
-**Builder saja, tanpa apa pun (benar-benar standalone):**
-Scene Builder **tidak butuh backend sama sekali** — WebSocket hanya dipakai untuk
-autocomplete IP (kalau tidak ada, dilewati). Jadi cukup sajikan folder statis:
+**Builder saja, tanpa backend (benar-benar standalone):**
+Builder **tidak butuh backend sama sekali** (tidak ada WebSocket lagi — IP device
+diketik manual). Cukup sajikan folder statis:
 ```bash
-npx serve v2/public      # atau server statik apa pun
-# lalu buka /scene-builder.html
+npx serve v2/public      # atau server statik apa pun → buka /builder/
 ```
 (Font memakai Google Fonts; kalau offline otomatis fallback ke font sistem.)
 
 ## Tidak bergantung pada v1
 - **Builder & Viewer** = file statik di `v2/public/` + Three.js lokal di `vendor/`.
-- Satu-satunya sentuhan ke monitoring = **status device via `/ws`** (di-proxy `server.js`),
-  dan itu pun opsional untuk Builder.
-- Untuk memindah v2 ke mesin/proyek lain: cukup salin folder `v2/` + `node_modules`
-  (express + ws) — tidak perlu membawa `src/` monitoring.
+- Satu-satunya sentuhan ke monitoring = **status device via `/ws`** (di-proxy `server.js`) untuk **Viewer**.
+- **Builder tidak menyentuh backend sama sekali.**
 
 ## Alur pakai
-1. **Scene Builder** (`/scene-builder.html`): gambar tembok/lantai/pintu/pin/teks,
-   taruh model dari **Katalog**, atur pencahayaan → **Simpan scene.json**.
-2. Taruh `scene.json` di `v2/public/`, model `.glb` di `v2/public/models/`.
-3. **Viewer 3D** (`/scene-view.html`) / **v2 Cisco** memuat scene + status live.
+1. **Builder** (`/builder/`) → pilih **3D** (scene.json) atau **2D** (layout2d.json):
+   gambar tembok/lantai/pintu/pin/teks/model → **Simpan**.
+2. Taruh `scene.json` / `layout2d.json` di `v2/public/`, model `.glb` di `v2/public/models/`.
+3. **Viewer 3D** (`/scene-view.html`) / **Viewer 2D** (`/floormap.html`) memuat + status live.
 
 ## Katalog model (`models/models.json`)
 ```jsonc

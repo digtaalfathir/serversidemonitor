@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Floor-map Builder 2D — layout2d.json</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/scene-builder.css">
+  <link rel="stylesheet" href="builder.css">
   <style>
     #view{background:#0a0e1a}
     #c2d{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
@@ -67,9 +67,8 @@
     </div>
     <div class="sec hidden" id="secPin">
       <h3>Pin Device</h3>
-      <div class="row"><label>IP</label><input type="text" id="pinIp" list="ipList" placeholder="172.19.88.x"></div>
+      <div class="row"><label>IP</label><input type="text" id="pinIp" placeholder="172.19.88.x"></div>
       <div class="row"><label>Label</label><input type="text" id="pinLabel" placeholder="opsional"></div>
-      <datalist id="ipList"></datalist>
       <div class="hint">Klik untuk menaruh titik device. IP menyambungkan ke status live di Viewer.</div>
     </div>
     <div class="sec hidden" id="secRoomSel">
@@ -114,6 +113,6 @@
       }
     }, 4000));
   </script>
-  <script src="/js/floormap-builder.js"></script>
+  <script src="builder.js"></script>
 </body>
 </html>

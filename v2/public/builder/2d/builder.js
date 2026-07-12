@@ -286,13 +286,6 @@
   function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
   function rgbToHex(c) { if (!c) return "#27324e"; if (c[0] === "#") return c.slice(0, 7); const m = c.match(/\d+/g); if (!m) return "#27324e"; return "#" + m.slice(0, 3).map((n) => (+n).toString(16).padStart(2, "0")).join(""); }
   let toastT; function toast(msg, ok) { const t = $("toast"); t.textContent = msg; t.className = (ok ? "ok" : "err") + " show"; clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 3000); }
-  (function wsIps() {
-    try {
-      const proto = location.protocol === "https:" ? "wss" : "ws";
-      const ws = new WebSocket(`${proto}://${location.host}/ws`);
-      ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.devices) $("ipList").innerHTML = m.devices.map((d) => `<option value="${d.ip}">${esc(d.name)}</option>`).join(""); };
-    } catch {}
-  })();
 
   applyView(); setMode("select"); refreshList();
   window.__fbReady = true;

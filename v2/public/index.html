@@ -29,26 +29,22 @@
   <div class="tag">MONITORING v2 · BERDIRI SENDIRI</div>
   <div class="sub">Aplikasi v2 terpisah dari app monitoring. Status device live diambil dari backend monitoring lewat WebSocket (proxy).</div>
   <div class="grid">
-    <a class="card" href="/scene-builder.html">
-      <div class="ic">🧱</div><div class="t">Scene Builder</div>
-      <div class="d">Bikin denah 3D (tembok, lantai, pintu, pin, teks, model) → simpan scene.json</div>
+    <a class="card" href="/builder/">
+      <div class="ic">🏗️</div><div class="t">Builder (3D / 2D)</div>
+      <div class="d">Satu app — tinggal pilih 3D atau 2D. Bikin denah → simpan scene.json / layout2d.json</div>
     </a>
     <a class="card" href="/scene-view.html">
       <div class="ic">🛰️</div><div class="t">Viewer 3D</div>
       <div class="d">Muat scene.json + status device live (hijau/merah by-IP)</div>
     </a>
-    <a class="card" href="/floormap-builder.html">
-      <div class="ic">🗺️</div><div class="t">Builder 2D</div>
-      <div class="d">Bikin denah 2D (ruangan/tembok/pin) → simpan layout2d.json</div>
-    </a>
     <a class="card" href="/floormap.html">
-      <div class="ic">🛰️</div><div class="t">Viewer 2D</div>
+      <div class="ic">🗺️</div><div class="t">Viewer 2D</div>
       <div class="d">Peta 2D top-down (SVG) dari layout2d.json + status live</div>
     </a>
   </div>
   <div class="foot">
     Jalankan: <b>npm run v2</b> (port 10102) · Status device di-proxy dari backend monitoring (<b>npm start</b>, port 10101).<br>
-    Belum ada scene? Buka <b>Scene Builder</b> → Simpan → taruh <b>scene.json</b> di <b>v2/public/</b>. Contoh: <a href="/scene-view.html?scene=/scene.example.json" style="color:#818cf8">viewer + scene contoh</a>.
+    Belum ada scene? Buka <b>Builder</b> → pilih 3D/2D → Simpan → taruh <b>scene.json</b> / <b>layout2d.json</b> di <b>v2/public/</b>. Contoh: <a href="/scene-view.html?scene=/scene.example.json" style="color:#818cf8">3D</a> · <a href="/floormap.html?layout=/layout2d.example.json" style="color:#818cf8">2D</a>.
   </div>
 </body>
 </html>
