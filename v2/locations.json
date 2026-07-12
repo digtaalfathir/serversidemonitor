@@ -7,6 +7,13 @@
       "ws": "ws://10.10.1.223:10011/ws",
       "scene3d": "/scenejmp.json",
       "layout2d": "/layout2djmp.json"
+    },
+    {
+      "id": "example",
+      "name": "Example Location",
+      "ws": "ws://10.10.1.223:10011/ws",
+      "scene3d": "/scene.example.json",
+      "layout2d": "/layout2d.example.json"
     }
   ]
 }

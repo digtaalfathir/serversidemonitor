@@ -35,7 +35,7 @@ let deviceByIp = {};        // live data from WS
 const deviceObjs = {};      // ip -> { bc, name, status }
 const rayTargets = [];      // beacon balls (raycast)
 const labelEls = [];        // device labels (toggle)
-let selectedIp = null, dtTimer = null, labelsVisible = true;
+let selectedIp = null, dtTimer = null, labelsVisible = true, filterMode = "all";
 let camAnim = null, savedCam = null, lastT = 0;   // klik→zoom ke titik, tutup→balik
 const modelCache = {};      // A2: url -> Promise<gltf.scene> (load-once, lalu clone)
 
@@ -126,6 +126,7 @@ function animate() {
   const dt = Math.min(0.1, t - lastT); lastT = t;
   for (const ip in deviceObjs) {
     const o = deviceObjs[ip];
+    if (o.dimmed) { o.bc.halo.material.opacity = 0; continue; }   // E4: disembunyikan filter
     if (o.status === "DOWN") {
       const ph = (t * 0.9) % 1;
       o.bc.halo.scale.setScalar(1 + ph * 1.8);
@@ -445,7 +446,33 @@ function applyStatus(devices) {
   });
   if (selectedIp && deviceByIp[selectedIp]) renderDetail(deviceByIp[selectedIp]);
   updateSummary();
+  applyFilter();   // E4: pertahankan sorotan filter saat status berubah
 }
+
+// E4 — filter status: redupkan beacon yang tak cocok (Semua/Up/Down)
+function beaconMatches(o) {
+  if (filterMode === "up") return o.status === "UP";
+  if (filterMode === "down") return o.status === "DOWN";
+  return true;   // "all"
+}
+function applyFilter() {
+  for (const ip in deviceObjs) {
+    const o = deviceObjs[ip];
+    const vis = beaconMatches(o);
+    o.dimmed = !vis;
+    const op = vis ? 1 : 0.12;
+    [o.bc.ball, o.bc.ring].forEach((m) => { m.material.transparent = true; m.material.opacity = op; });
+    if (o.bc.stem) { o.bc.stem.material.transparent = true; o.bc.stem.material.opacity = op; }
+    if (o.labelEl) o.labelEl.style.opacity = vis ? "" : "0.12";
+  }
+}
+function sevIcon(sev) { return sev === "CRITICAL" || sev === "HIGH" ? "▲" : sev === "MEDIUM" ? "◆" : "•"; }
+
+// ---- hook untuk chrome bersama (E3 cari/fly-to, E4 filter) ----
+window.pulseGetTargets = () => Object.keys(deviceObjs).map((ip) => ({ ip, name: deviceObjs[ip].name, status: deviceObjs[ip].status }));
+window.pulseFocus = (ip) => { if (deviceObjs[ip]) openDetail(ip); };
+window.pulseFilter = (mode) => { filterMode = mode || "all"; applyFilter(); };
+
 // Ringkasan dihitung dari PIN DI SCENE (deviceObjs), bukan semua device yang dikirim WS.
 // Jadi kalau scene punya 2 pin tapi WS kirim 3 device, total tetap 2.
 function updateSummary() {
@@ -558,7 +585,8 @@ function restoreCam() {
 }
 function openDetail(ip) {
   selectedIp = ip;
-  if (deviceByIp[ip]) renderDetail(deviceByIp[ip]);
+  const d = deviceByIp[ip] || { ip, name: (deviceObjs[ip] && deviceObjs[ip].name) || ip };   // E1: tetap render walau belum ada data live
+  renderDetail(d);
   detailPanel.classList.add("open");
   const o = deviceObjs[ip];
   if (o) { const wp = new THREE.Vector3(); o.bc.group.getWorldPosition(wp); wp.y += 1.2; focusOn(wp); }
@@ -570,25 +598,31 @@ function closeDetail() {
   restoreCam();
 }
 function renderDetail(d) {
+  const hasData = d.status != null;
   const isDown = d.status === "DOWN";
+  const sev = d.severity || "LOW";
   const avail = d.uptimeToday ?? 100;
+  const trend = (d.history || []).slice(-24);            // E9: kronologis kiri→kanan
   const hist = (d.history || []).slice(-6).reverse();
   detailContent.innerHTML = `
     <div class="dt-head">
-      <div><h2>${esc(d.name)}</h2><div class="dt-ip">${d.ip} · <span class="badge sev-${d.severity || "LOW"}">${d.severity || "—"}</span></div></div>
+      <div><h2>${esc(d.name)}</h2><div class="dt-ip">${d.ip} · <span class="badge sev-${sev}">${sevIcon(sev)} ${sev}</span></div></div>
       <button class="dt-close" id="dtClose">✕</button>
     </div>
     <div class="dt-body">
-      <div class="dt-status-banner ${isDown ? "down" : "up"}"><span>●</span><span>${isDown ? "DEVICE DOWN" : "DEVICE UP"}</span>
+      <div class="dt-status-banner ${isDown ? "down" : hasData ? "up" : ""}"${hasData ? "" : ' style="background:var(--hover);color:var(--text-dim);border:1px solid var(--border)"'}><span>●</span><span>${isDown ? "DEVICE DOWN" : hasData ? "DEVICE UP" : "TIDAK ADA DATA LIVE"}</span>
         ${isDown && d.downSince ? `<span style="margin-left:auto;font-size:12px;font-weight:600" id="dtLive">—</span>` : ""}</div>
+      ${hasData ? "" : `<div class="dt-empty" style="margin:0 0 12px">Device IP ini belum melapor dari WS lokasi ini.</div>`}
+      <div class="dt-section">Status Trend</div>
+      <div class="mini-trend">${trend.length ? trend.map((h) => `<i class="${h.status === "UP" ? "up" : "down"}"></i>`).join("") : `<span class="empty">Belum ada data.</span>`}</div>
       <div class="dt-section">Network Quality</div>
       <div class="dt-grid">
-        <div class="dt-item"><div class="dt-label">Availability</div><div class="dt-val ${avail >= 99 ? "up" : "down"}">${avail}%</div></div>
+        <div class="dt-item"><div class="dt-label">Availability</div><div class="dt-val ${hasData ? (avail >= 99 ? "up" : "down") : ""}">${hasData ? avail + "%" : "—"}</div></div>
         <div class="dt-item"><div class="dt-label">Latency</div><div class="dt-val">${d.latency != null ? d.latency + " ms" : "—"}</div></div>
         <div class="dt-item"><div class="dt-label">Avg</div><div class="dt-val">${d.avgLatency != null ? d.avgLatency + " ms" : "—"}</div></div>
         <div class="dt-item"><div class="dt-label">Peak</div><div class="dt-val">${d.maxLatency != null ? d.maxLatency + " ms" : "—"}</div></div>
         <div class="dt-item"><div class="dt-label">Downtime</div><div class="dt-val">${fmtSec(d.downtimeTodaySec ?? 0)}</div></div>
-        <div class="dt-item"><div class="dt-label">Severity</div><div class="dt-val" style="font-size:13px">${d.severity || "—"}</div></div>
+        <div class="dt-item"><div class="dt-label">Severity</div><div class="dt-val" style="font-size:13px">${sev}</div></div>
       </div>
       <div class="dt-section">Device Info</div>
       <div class="dt-meta">

@@ -22,7 +22,10 @@
       <button id="t3d" class="active">3D</button>
       <button id="t2d" title="Tampilan denah 2D">2D</button>
     </div>
-    <span class="tb-spacer"></span>
+    <div class="tb-search">
+      <input id="searchBox" type="text" placeholder="Cari device / IP…" autocomplete="off">
+      <div class="search-results" id="searchResults"></div>
+    </div>
     <span class="tb-item" id="lastUpdate">Menyambung…</span>
     <span class="tb-item"><span class="conn-dot" id="connDot"></span><span id="connLabel">Offline</span></span>
     <button class="icon-btn" id="themeToggle" title="Tema gelap / terang">🌙</button>
@@ -54,6 +57,11 @@
     <div class="sp-chips">
       <div class="sp-chip down"><b id="downCount">0</b><span>Down</span></div>
       <div class="sp-chip unknown"><b id="unknownCount">0</b><span>No data</span></div>
+    </div>
+    <div class="sp-filter" id="statusFilter">
+      <button data-f="all" class="active">Semua</button>
+      <button data-f="up">Up</button>
+      <button data-f="down">Down</button>
     </div>
   </div>
 

@@ -195,3 +195,41 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 /* legend severity ring (dipakai 2D) */
 .lg-ring{width:11px;height:11px;border-radius:50%;border:2px solid;flex-shrink:0}
 .dt-events{margin-top:6px}
+
+/* =====================================================================
+   FASE E — cari (E3), filter (E4), mini-trend & ikon severity (E9)
+   ===================================================================== */
+/* search di topbar */
+.tb-search{position:relative;flex:1;max-width:360px;min-width:130px}
+.tb-search input{width:100%;background:var(--hover);border:1px solid var(--border);border-radius:10px;color:var(--text-bright);
+  font:600 13px Inter,sans-serif;padding:8px 12px 8px 33px;outline:none;transition:border-color .15s;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b9ab4' stroke-width='2.4' stroke-linecap='round'><circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>");
+  background-repeat:no-repeat;background-position:11px center}
+.tb-search input:focus{border-color:var(--accent)}
+.search-results{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--panel-solid);border:1px solid var(--border);
+  border-radius:12px;box-shadow:var(--shadow);display:none;z-index:40;max-height:340px;overflow-y:auto}
+.search-results.show{display:block}
+.sr-item{display:flex;align-items:center;gap:9px;padding:9px 13px;cursor:pointer;font-size:13px;color:var(--text)}
+.sr-item:hover,.sr-item.active{background:var(--hover)}
+.sr-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sr-name{font-weight:600;color:var(--text-bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr-ip{margin-left:auto;font-size:11px;color:var(--text-dim);font-family:monospace}
+.sr-empty{padding:12px 13px;font-size:12px;color:var(--text-dim)}
+
+/* filter status di panel kiri */
+.sp-filter{display:flex;gap:5px;margin-top:15px;padding-top:14px;border-top:1px solid var(--border)}
+.sp-filter button{flex:1;padding:7px 0;border:1px solid var(--border);border-radius:9px;background:transparent;color:var(--text-dim);
+  font:700 11px Inter,sans-serif;cursor:pointer;transition:all .15s}
+.sp-filter button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.sp-filter button:not(.active):hover{color:var(--text);background:var(--hover)}
+
+/* mini-trend (E9) */
+.mini-trend{display:flex;gap:2px;align-items:flex-end;height:30px;margin:2px 0 4px}
+.mini-trend i{flex:1;min-width:2px;border-radius:2px;opacity:.92}
+.mini-trend i.up{background:var(--up);height:52%}
+.mini-trend i.down{background:var(--down);height:100%}
+.mini-trend .empty{color:var(--text-dim);font-size:11px;font-style:italic}
+
+/* 2D: marker diredupkan saat difilter + animasi fly-to */
+#viewport.flying{transition:transform .4s ease}
+.fm-marker.dimmed{opacity:.12;transition:opacity .2s}

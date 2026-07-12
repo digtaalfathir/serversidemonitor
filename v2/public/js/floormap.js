@@ -12,7 +12,7 @@ let deviceByIp = {};        // live data keyed by ip
 let markerByIp = {};        // ip -> <g> marker element
 let pins = [];              // from layout2d.json
 const pinByIp = {};         // ip -> pin {x,y,label}
-let selectedIp = null, dtTimer = null;
+let selectedIp = null, dtTimer = null, filterMode = "all";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("floormap");
@@ -139,6 +139,7 @@ function applyStatus(devices) {
   });
   if (selectedIp && deviceByIp[selectedIp]) renderDetail(deviceByIp[selectedIp]);
   updateSummary();
+  applyFilter();   // E4: pertahankan sorotan filter
 }
 
 function makeMarker(p) {
@@ -235,19 +236,23 @@ function closeDetail() {
 function renderDetail(d) {
   const hasData = d.status != null;
   const isDown = d.status === "DOWN";
+  const sev = d.severity || "LOW";
   const availTxt = hasData ? (d.uptimeToday ?? 100) + "%" : "—";
+  const trend = (d.history || []).slice(-24);            // E9: kronologis kiri→kanan
   const hist = (d.history || []).slice(-6).reverse();
   const p = pinByIp[d.ip] || { x: "—", y: "—" };
   detailContent.innerHTML = `
     <div class="dt-head">
       <div><h2>${esc(d.name)}</h2>
-        <div class="dt-ip">${d.ip} · <span class="badge sev-${d.severity || "LOW"}">${d.severity || "—"}</span></div></div>
+        <div class="dt-ip">${d.ip} · <span class="badge sev-${sev}">${sevIcon(sev)} ${sev}</span></div></div>
       <button class="dt-close" id="dtClose">✕</button>
     </div>
     <div class="dt-body">
-      <div class="dt-status-banner ${isDown ? "down" : hasData ? "up" : ""}"${hasData ? "" : ' style="background:rgba(148,163,184,.12);color:#94a3b8;border:1px solid var(--border)"'}><span>●</span><span>${isDown ? "DEVICE DOWN" : hasData ? "DEVICE UP" : "TIDAK ADA DATA LIVE"}</span>
+      <div class="dt-status-banner ${isDown ? "down" : hasData ? "up" : ""}"${hasData ? "" : ' style="background:var(--hover);color:var(--text-dim);border:1px solid var(--border)"'}><span>●</span><span>${isDown ? "DEVICE DOWN" : hasData ? "DEVICE UP" : "TIDAK ADA DATA LIVE"}</span>
         ${isDown && d.downSince ? `<span style="margin-left:auto;font-size:12px;font-weight:600" id="dtLive">—</span>` : ""}</div>
-      ${hasData ? "" : `<div class="dt-empty" style="margin:0 0 12px">Device dengan IP ini belum melapor. Pastikan backend monitoring (npm start) jalan.</div>`}
+      ${hasData ? "" : `<div class="dt-empty" style="margin:0 0 12px">Device IP ini belum melapor dari WS lokasi ini.</div>`}
+      <div class="dt-section">Status Trend</div>
+      <div class="mini-trend">${trend.length ? trend.map((h) => `<i class="${h.status === "UP" ? "up" : "down"}"></i>`).join("") : `<span class="empty">Belum ada data.</span>`}</div>
       <div class="dt-section">Network Quality</div>
       <div class="dt-grid">
         <div class="dt-item"><div class="dt-label">Availability</div><div class="dt-val ${hasData ? (d.uptimeToday >= 99 ? "up" : "down") : ""}">${availTxt}</div></div>
@@ -284,6 +289,7 @@ function startDtLive(d) {
 }
 
 function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
+function sevIcon(sev) { return sev === "CRITICAL" || sev === "HIGH" ? "▲" : sev === "MEDIUM" ? "◆" : "•"; }
 function fmtSec(s) { if (!s) return "0s"; const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? `${h}h ${m % 60}m` : m ? `${m}m ${s % 60}s` : `${s}s`; }
 
 // ===================================================================
@@ -356,6 +362,30 @@ $("zoomOut").onclick = () => zoomCenter(1 / 1.25);
 $("zoomReset").onclick = () => { view = { x: 0, y: 0, k: 1 }; applyView(); };
 $("btnExport").onclick = exportSVG;
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDetail(); });
+
+// ===================================================================
+//  FASE E — filter (E4) + fly-to (E3) + hook untuk chrome bersama
+// ===================================================================
+function applyFilter() {
+  pins.forEach((p) => {
+    const el = markerByIp[p.ip]; if (!el) return;
+    const st = deviceByIp[p.ip] ? deviceByIp[p.ip].status : "UNKNOWN";
+    const vis = filterMode === "all" || (filterMode === "up" && st === "UP") || (filterMode === "down" && st === "DOWN");
+    el.classList.toggle("dimmed", !vis);
+  });
+}
+function flyTo(ip) {                                    // E3: pusatkan + zoom ke pin
+  const p = pinByIp[ip]; if (!p) return;
+  const vb = svg.viewBox.baseVal;
+  view.k = Math.min(K_MAX, 2.2);
+  view.x = (vb.x + vb.width / 2) - view.k * p.x;
+  view.y = (vb.y + vb.height / 2) - view.k * p.y;
+  viewport.classList.add("flying"); applyView();
+  setTimeout(() => viewport.classList.remove("flying"), 450);
+}
+window.pulseGetTargets = () => pins.map((p) => ({ ip: p.ip, name: (deviceByIp[p.ip] && deviceByIp[p.ip].name) || p.label || p.ip, status: deviceByIp[p.ip] ? deviceByIp[p.ip].status : "UNKNOWN" }));
+window.pulseFocus = (ip) => { flyTo(ip); openDetail(ip); };
+window.pulseFilter = (mode) => { filterMode = mode || "all"; applyFilter(); };
 
 // ===== Start =====
 applyView();

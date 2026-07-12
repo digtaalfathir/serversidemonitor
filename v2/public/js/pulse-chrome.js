@@ -64,4 +64,53 @@
       nav.appendChild(sel);
     })
     .catch(() => {});
+
+  // ---- E3: cari device (nama/IP) → sorot & fly-to. Data & fly-to dari viewer via hook. ----
+  const box = document.getElementById("searchBox");
+  const results = document.getElementById("searchResults");
+  const dotColor = (s) => (s === "UP" ? "var(--up)" : s === "DOWN" ? "var(--down)" : "var(--unknown)");
+  let items = [], active = -1;
+  function render(q) {
+    if (!results) return;
+    const ql = q.trim().toLowerCase();
+    const all = window.pulseGetTargets ? window.pulseGetTargets() : [];
+    items = ql ? all.filter((t) => (t.name || "").toLowerCase().includes(ql) || (t.ip || "").toLowerCase().includes(ql)).slice(0, 10) : [];
+    active = -1;
+    if (!ql) { results.classList.remove("show"); results.innerHTML = ""; return; }
+    results.innerHTML = items.length
+      ? items.map((t, i) => `<div class="sr-item" data-i="${i}"><span class="sr-dot" style="background:${dotColor(t.status)}"></span><span class="sr-name">${t.name || t.ip}</span><span class="sr-ip">${t.ip}</span></div>`).join("")
+      : `<div class="sr-empty">Tak ada yang cocok.</div>`;
+    results.classList.add("show");
+    results.querySelectorAll(".sr-item").forEach((el) => (el.onclick = () => choose(+el.dataset.i)));
+  }
+  function mark() { results.querySelectorAll(".sr-item").forEach((el, i) => el.classList.toggle("active", i === active)); }
+  function choose(i) {
+    const t = items[i]; if (!t) return;
+    if (window.pulseFocus) window.pulseFocus(t.ip);
+    results.classList.remove("show"); if (box) box.blur();
+  }
+  if (box) {
+    box.addEventListener("input", () => render(box.value));
+    box.addEventListener("focus", () => box.value && render(box.value));
+    box.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { box.value = ""; results.classList.remove("show"); box.blur(); return; }
+      if (!items.length) return;
+      if (e.key === "ArrowDown") { e.preventDefault(); active = (active + 1) % items.length; mark(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); active = (active - 1 + items.length) % items.length; mark(); }
+      else if (e.key === "Enter") { e.preventDefault(); choose(active >= 0 ? active : 0); }
+    });
+    document.addEventListener("click", (e) => { if (!e.target.closest(".tb-search")) results.classList.remove("show"); });
+  }
+
+  // ---- E4: filter status (Semua / Up / Down) → viewer redupkan yg tak cocok ----
+  const filterBox = document.getElementById("statusFilter");
+  if (filterBox) {
+    filterBox.querySelectorAll("button").forEach((btn) => {
+      btn.onclick = () => {
+        filterBox.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        if (window.pulseFilter) window.pulseFilter(btn.dataset.f);
+      };
+    });
+  }
 })();
