@@ -35,19 +35,24 @@
 
   <!-- ===== LEFT STAT PANEL (Cisco-style) ===== -->
   <div class="statpanel">
-    <div class="loc">Lokasi</div>
-    <h2 id="sceneInfo">Monitoring</h2>
-    <div class="big"><b id="upCount">0</b><span>device online</span></div>
-    <div class="tiles">
-      <div class="tile total"><b id="totalDevices">0</b><span>Total</span></div>
-      <div class="tile down"><b id="downCount">0</b><span>Down</span></div>
+    <div class="sp-head">
+      <span class="sp-dot" id="spDot"></span>
+      <div class="sp-headtext">
+        <div class="sp-name" id="sceneInfo">Monitoring</div>
+        <div class="sp-sub" id="locSub">Menyambung…</div>
+      </div>
     </div>
-    <div class="health">Health <b id="healthScore">100%</b></div>
-    <div class="bar"><i id="healthBar" style="width:100%"></i></div>
-    <div class="sub">
-      <span class="lg-dot" style="background:var(--up)"></span> Up ·
-      <span class="lg-dot" style="background:var(--down)"></span> Down ·
-      <span class="lg-dot" style="background:var(--unknown)"></span> Belum terpetakan
+    <div class="sp-hero">
+      <div class="sp-hero-val"><b id="upCount">0</b><span>/ <i id="totalDevices">0</i></span></div>
+      <div class="sp-hero-lbl">device online</div>
+    </div>
+    <div class="sp-health">
+      <div class="sp-health-top"><span>Health</span><b id="healthScore">100%</b></div>
+      <div class="sp-bar"><i id="healthBar"></i></div>
+    </div>
+    <div class="sp-chips">
+      <div class="sp-chip down"><b id="downCount">0</b><span>Down</span></div>
+      <div class="sp-chip unknown"><b id="unknownCount">0</b><span>No data</span></div>
     </div>
   </div>
 

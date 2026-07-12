@@ -26,7 +26,7 @@ const $ = (id) => document.getElementById(id);
 
 // ---- three ----
 let scene, camera, renderer, labelRenderer, controls, raycaster, clock;
-let hemi, amb, keyLight, built, groundMesh;
+let hemi, amb, keyLight, built;
 const loader = new GLTFLoader();
 const ndc = new THREE.Vector2();
 
@@ -47,14 +47,30 @@ try {
   initThree();
   bindInteraction();
   animate();
-  connectWS();
-  loadDefaultScene();
+  boot();
 } catch (err) { showError(err); }
+
+// Lokasi aktif (dari locations.json) → menentukan scene + nama panel + WS.
+let activeLoc = null;
+async function boot() {
+  await resolveLocation();
+  connectWS();
+  loadScene();
+}
+async function resolveLocation() {
+  try {
+    const data = await fetch("/api/locations", { cache: "no-store" }).then((r) => r.json());
+    const list = data.locations || [];
+    const wanted = new URLSearchParams(location.search).get("loc");
+    activeLoc = list.find((l) => l.id === wanted) || list[0] || null;   // default = urutan pertama
+  } catch { activeLoc = null; }
+  const el = $("sceneInfo"); if (el) el.textContent = activeLoc ? activeLoc.name : "Monitoring";
+}
 
 function initThree() {
   const w = stage.clientWidth, h = stage.clientHeight;
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x080b14);
+  scene.background = new THREE.Color(0x0a0d16);   // di-override applyTheme sesuai tema
 
   camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 3000);
   camera.position.set(28, 24, 32);
@@ -88,15 +104,7 @@ function initThree() {
   keyLight.position.set(40, 60, 30);       // arah default (dioverride scene.lighting)
   scene.add(hemi, amb, keyLight);
 
-  groundMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(600, 600),
-    // polos (menyatu dengan background; envMapIntensity 0 supaya tak "memutih")
-    new THREE.MeshStandardMaterial({ color: 0x090d15, roughness: 1, metalness: 0, envMapIntensity: 0 })
-  );
-  groundMesh.rotation.x = -Math.PI / 2;
-  groundMesh.position.y = -0.25;         // di bawah slab lantai → tepi lantai kelihatan
-  scene.add(groundMesh);
-  // A3: grid dihilangkan (default off, tanpa toggle)
+  // TANPA plane tanah & grid — lantai (dari scene.json) melayang di atas background polos, ala Cisco.
 
   // tema gelap/terang: kanvas 3D ikut. Baca tema awal + dengarkan perubahan dari topbar.
   applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
@@ -144,29 +152,28 @@ function onResize() {
 // =====================================================================
 //  LOAD SCENE
 // =====================================================================
-async function loadDefaultScene() {
+async function loadScene() {
   const forced = new URLSearchParams(location.search).get("scene");
-  const url = forced || "/scene.json";
+  const url = forced || (activeLoc && activeLoc.scene3d) || "/scene.json";
+  const setSub = (t) => { const s = $("locSub"); if (s) s.textContent = t; };
   const tryLoad = async (u) => {
     const res = await fetch(u, { cache: "no-store" });
     const data = JSON.parse(await res.text());   // throws if it's the SPA-fallback HTML
-    buildFromScene(data, u);
+    buildFromScene(data);
     hideSplash();
   };
   try {
     await tryLoad(url);
+    setSub("Live monitoring");
   } catch (e) {
     // tidak dipaksa via ?scene= → coba contoh bawaan supaya langsung ada tampilan
     if (!forced) {
-      try {
-        await tryLoad("/scene.example.json");
-        $("sceneInfo").textContent = "Contoh (scene.example.json)";
-        return;
-      } catch (_) { /* jatuh ke pesan bantuan */ }
+      try { await tryLoad("/scene.example.json"); setSub("Denah contoh"); return; }
+      catch (_) { /* jatuh ke pesan bantuan */ }
     }
     splash.classList.remove("hidden"); splash.classList.remove("error");
-    splashMsg.innerHTML = `Belum ada <b>${url}</b>.<br>Export dari Scene Builder → taruh file <b>scene.json</b> di folder <b>public/</b>, ` +
-      `atau klik tombol <b>📂 Muat scene.json</b> (kanan bawah) untuk mencoba file dari komputer.`;
+    splashMsg.innerHTML = `Belum ada denah <b>${url}</b> untuk lokasi ini.<br>Export dari Scene Builder → taruh <b>scene.json</b> di <b>v2/public/</b>, ` +
+      `atau klik tombol <b>📂</b> (kanan bawah) untuk memuat file dari komputer.`;
   }
 }
 $("btnLoad").onclick = () => $("fileScene").click();
@@ -200,9 +207,9 @@ function fitCameraToScene() {
   controls.update();
 }
 
-function buildFromScene(s, name) {
+function buildFromScene(s) {
   clearBuilt();
-  $("sceneInfo").textContent = `scene: ${name || "scene.json"}`;
+  // nama panel = name lokasi (di-set resolveLocation), BUKAN nama scene (terlalu teknis).
 
   if (s.lighting) applyLighting(s.lighting);
 
@@ -221,6 +228,7 @@ function buildFromScene(s, name) {
   }
   // re-apply any live status we already have
   if (Object.keys(deviceByIp).length) applyStatus(Object.values(deviceByIp));
+  updateSummary();   // tampilkan total pin scene walau data live belum masuk
 }
 
 function applyLighting(L) {
@@ -401,6 +409,7 @@ function addModel(d) {
       built.add(bc.group);
       registerDevice(d.deviceIp, d.name || d.deviceIp, bc);
       if (Object.keys(deviceByIp).length) applyStatus(Object.values(deviceByIp));
+      updateSummary();   // model .glb load async → refresh hitungan saat beacon-nya siap
     }
   }).catch(() => console.warn("model tak ditemukan:", d.url));
 }
@@ -416,25 +425,40 @@ function applyStatus(devices) {
     recolorBeacon(o.bc, STATUS_HEX[d.status] ?? UNKNOWN_HEX);
   });
   if (selectedIp && deviceByIp[selectedIp]) renderDetail(deviceByIp[selectedIp]);
+  updateSummary();
 }
-function updateSummary(devices) {
-  const total = devices.length;
-  const up = devices.filter((d) => d.status === "UP").length;
-  $("totalDevices").textContent = total; $("upCount").textContent = up; $("downCount").textContent = total - up;
-  const score = total > 0 ? ((up / total) * 100).toFixed(1) : "100.0";
-  const el = $("healthScore"); el.textContent = `${score}%`;
-  el.style.color = score >= 95 ? "var(--up)" : score >= 80 ? "var(--high)" : "var(--down)";
-  const bar = $("healthBar"); if (bar) bar.style.width = `${score}%`;
+// Ringkasan dihitung dari PIN DI SCENE (deviceObjs), bukan semua device yang dikirim WS.
+// Jadi kalau scene punya 2 pin tapi WS kirim 3 device, total tetap 2.
+function updateSummary() {
+  const ips = Object.keys(deviceObjs);
+  const total = ips.length;
+  let up = 0, down = 0, unknown = 0;
+  ips.forEach((ip) => {
+    const st = deviceObjs[ip].status;
+    if (st === "UP") up++; else if (st === "DOWN") down++; else unknown++;
+  });
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  set("totalDevices", total); set("upCount", up); set("downCount", down);
+  const uc = $("unknownCount");
+  if (uc) { uc.textContent = unknown; const chip = uc.closest(".sp-chip"); if (chip) chip.style.display = unknown ? "" : "none"; }
+  const known = up + down;
+  const score = (total === 0) ? 100 : (known === 0 ? null : Math.round((up / total) * 100));   // null = belum ada data live
+  const el = $("healthScore");
+  if (el) {
+    el.textContent = score === null ? "—" : `${score}%`;
+    el.style.color = score === null ? "var(--text-dim)" : score >= 95 ? "var(--up)" : score >= 60 ? "var(--high)" : "var(--down)";
+  }
+  const bar = $("healthBar"); if (bar) bar.style.width = `${score === null ? 0 : score}%`;
+  const dot = $("spDot"); if (dot) dot.style.background = down ? "var(--down)" : up ? "var(--up)" : "var(--unknown)";
 }
 
-// tema gelap/terang untuk kanvas 3D (background + tanah + intensitas cahaya ambien)
+// tema gelap/terang untuk kanvas 3D (background polos + intensitas cahaya ambien)
 function applyTheme(theme) {
   if (!scene) return;
   const light = theme === "light";
-  scene.background = new THREE.Color(light ? 0xe7edf5 : 0x080b14);
-  if (groundMesh) groundMesh.material.color.setHex(light ? 0xd4deea : 0x090d15);
-  if (hemi) hemi.intensity = light ? 0.85 : 0.45;
-  if (amb) amb.intensity = light ? 0.5 : 0.22;
+  scene.background = new THREE.Color(light ? 0xeef2f8 : 0x0a0d16);
+  if (hemi) hemi.intensity = light ? 0.9 : 0.5;
+  if (amb) amb.intensity = light ? 0.55 : 0.24;
 }
 
 // =====================================================================
@@ -578,7 +602,7 @@ function startDtLive(d) {
 // =====================================================================
 function connectWS() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
-  const loc = new URLSearchParams(location.search).get("loc");   // tempat mana (multi-lokasi)
+  const loc = (activeLoc && activeLoc.id) || new URLSearchParams(location.search).get("loc");   // lokasi aktif
   const ws = new WebSocket(`${proto}://${location.host}/ws${loc ? "?loc=" + encodeURIComponent(loc) : ""}`);
   ws.onopen = () => setConn(true);
   ws.onclose = () => { setConn(false); setTimeout(connectWS, 3000); };
@@ -586,8 +610,8 @@ function connectWS() {
   ws.onmessage = (e) => {
     let m; try { m = JSON.parse(e.data); } catch { return; }
     if (m.type === "cmd_result") return;
-    if (m.devices) { m.devices.forEach((d) => (deviceByIp[d.ip] = d)); applyStatus(m.devices); updateSummary(m.devices); }
-    if (m.timestamp) $("lastUpdate").textContent = `Last update: ${m.timestamp}`;
+    if (m.devices) { m.devices.forEach((d) => (deviceByIp[d.ip] = d)); applyStatus(m.devices); }   // applyStatus → updateSummary
+    if (m.timestamp) $("lastUpdate").textContent = `Update ${m.timestamp}`;
   };
 }
 function setConn(ok) {
