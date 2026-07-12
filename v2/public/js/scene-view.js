@@ -35,7 +35,8 @@ let deviceByIp = {};        // live data from WS
 const deviceObjs = {};      // ip -> { bc, name, status }
 const rayTargets = [];      // beacon balls (raycast)
 const labelEls = [];        // device labels (toggle)
-let selectedIp = null, dtTimer = null, labelsVisible = true, filterMode = "all";
+let selectedIp = null, dtTimer = null, labelsVisible = true, filterMode = "all", alertBaseline = false;
+let zones3d = [];           // E2/E7 — zona = lantai (bounds XZ + mesh utk warna)
 let camAnim = null, savedCam = null, lastT = 0;   // klik→zoom ke titik, tutup→balik
 const modelCache = {};      // A2: url -> Promise<gltf.scene> (load-once, lalu clone)
 
@@ -54,8 +55,8 @@ try {
   boot();
 } catch (err) { showError(err); }
 
-// Lokasi aktif (dari locations.json) → menentukan scene + nama panel + WS.
-let activeLoc = null;
+// Lokasi + lantai aktif (dari locations.json) → menentukan scene + nama panel + WS.
+let activeLoc = null, activeFloor = null;
 async function boot() {
   await resolveLocation();
   connectWS();
@@ -65,9 +66,11 @@ async function resolveLocation() {
   try {
     const data = await fetch("/api/locations", { cache: "no-store" }).then((r) => r.json());
     const list = data.locations || [];
-    const wanted = new URLSearchParams(location.search).get("loc");
-    activeLoc = list.find((l) => l.id === wanted) || list[0] || null;   // default = urutan pertama
-  } catch { activeLoc = null; }
+    const params = new URLSearchParams(location.search);
+    activeLoc = list.find((l) => l.id === params.get("loc")) || list[0] || null;   // default = urutan pertama
+    const floors = (activeLoc && activeLoc.floors) || [];
+    activeFloor = floors.find((f) => f.id === params.get("floor")) || floors[0] || null;   // E5: lantai default = pertama
+  } catch { activeLoc = null; activeFloor = null; }
   const el = $("sceneInfo"); if (el) el.textContent = activeLoc ? activeLoc.name : "Monitoring";
 }
 
@@ -160,7 +163,7 @@ function onResize() {
 // =====================================================================
 async function loadScene() {
   const forced = new URLSearchParams(location.search).get("scene");
-  const url = forced || (activeLoc && activeLoc.scene3d) || "/scene.json";
+  const url = forced || (activeFloor && activeFloor.scene3d) || (activeLoc && activeLoc.scene3d) || "/scene.json";
   const setSub = (t) => { const s = $("locSub"); if (s) s.textContent = t; };
   const tryLoad = async (u) => {
     const res = await fetch(u, { cache: "no-store" });
@@ -170,11 +173,11 @@ async function loadScene() {
   };
   try {
     await tryLoad(url);
-    setSub("Live monitoring");
+    setSub(activeFloor ? activeFloor.name : "Live monitoring");
   } catch (e) {
     // tidak dipaksa via ?scene= → coba contoh bawaan supaya langsung ada tampilan
     if (!forced) {
-      try { await tryLoad("/scene.example.json"); setSub("Denah contoh"); return; }
+      try { await tryLoad("/scene.example.json"); setSub(activeFloor ? activeFloor.name + " · contoh" : "Denah contoh"); return; }
       catch (_) { /* jatuh ke pesan bantuan */ }
     }
     splash.classList.remove("hidden"); splash.classList.remove("error");
@@ -221,8 +224,15 @@ function buildFromScene(s) {
 
   if (s.walls && s.walls.length) built.add(buildWallsMerged(s.walls));   // A2: 1 mesh per warna
   let floorTop = null;
-  (s.floors || []).forEach((d) => {
-    built.add(buildFloor(d));
+  zones3d = [];
+  (s.floors || []).forEach((d, i) => {
+    const fm = buildFloor(d);
+    built.add(fm);
+    zones3d.push({                             // E2/E7: tiap lantai = 1 zona
+      name: d.name || d.label || `Zona ${i + 1}`,
+      bounds: { minX: d.x - d.w / 2, maxX: d.x + d.w / 2, minZ: d.z - d.d / 2, maxZ: d.z + d.d / 2 },
+      mesh: fm, baseHex: fm.material.color.getHex(), up: 0, down: 0, total: 0,
+    });
     const t = 0.03 + (d.order || 0) * 0.006;   // = permukaan atas (samakan dengan buildFloor)
     if (floorTop === null || t > floorTop) floorTop = t;
   });
@@ -389,7 +399,7 @@ function registerDevice(ip, name, bc) {
   const lbl = new CSS2DObject(el);
   lbl.position.y = bc.ball.position.y + 0.5;
   bc.group.add(lbl);
-  deviceObjs[ip] = { bc, name: name || ip, status: "UNKNOWN", labelEl: el };
+  deviceObjs[ip] = { bc, name: name || ip, status: "UNKNOWN", labelEl: el, pos: { x: bc.group.position.x, z: bc.group.position.z } };
 }
 
 function addPinDevice(d) {
@@ -441,9 +451,15 @@ function applyStatus(devices) {
   devices.forEach((d) => {
     const o = deviceObjs[d.ip];
     if (!o) return;
+    const prev = o.status;
     o.status = d.status;
     recolorBeacon(o.bc, STATUS_HEX[d.status] ?? UNKNOWN_HEX);
+    if (alertBaseline && prev !== d.status && window.pulseAlert) {   // E8: toast hanya utk PERUBAHAN (bukan snapshot awal)
+      if (d.status === "DOWN") window.pulseAlert(o.name || d.name || d.ip, d.ip, "down");
+      else if (d.status === "UP" && prev === "DOWN") window.pulseAlert(o.name || d.name || d.ip, d.ip, "up");
+    }
   });
+  alertBaseline = true;
   if (selectedIp && deviceByIp[selectedIp]) renderDetail(deviceByIp[selectedIp]);
   updateSummary();
   applyFilter();   // E4: pertahankan sorotan filter saat status berubah
@@ -496,6 +512,51 @@ function updateSummary() {
   }
   const bar = $("healthBar"); if (bar) bar.style.width = `${score === null ? 0 : score}%`;
   const dot = $("spDot"); if (dot) dot.style.background = down ? "var(--down)" : up ? "var(--up)" : "var(--unknown)";
+  updateZones();   // E2/E7
+}
+
+// E2/E7 — occupancy & pewarnaan zona (zona 3D = lantai; device dipetakan by koordinat XZ)
+function zoneAt(x, z) {
+  let best = null, bestArea = Infinity;                 // pilih zona terkecil yang memuat titik
+  for (const zn of zones3d) {
+    const b = zn.bounds;
+    if (x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) {
+      const a = (b.maxX - b.minX) * (b.maxZ - b.minZ);
+      if (a < bestArea) { bestArea = a; best = zn; }
+    }
+  }
+  return best;
+}
+function updateZones() {
+  if (!zones3d.length) { const p = $("zonePanel"); if (p) { p.style.display = "none"; p.innerHTML = ""; } return; }
+  zones3d.forEach((z) => { z.up = 0; z.down = 0; z.total = 0; });
+  for (const ip in deviceObjs) {
+    const o = deviceObjs[ip]; if (!o.pos) continue;
+    const z = zoneAt(o.pos.x, o.pos.z); if (!z) continue;
+    z.total++;
+    if (o.status === "UP") z.up++; else if (o.status === "DOWN") z.down++;
+  }
+  zones3d.forEach((z) => { if (z.mesh) z.mesh.material.color.setHex(z.down > 0 ? 0x7a2533 : z.baseHex); });   // E7: lantai memerah saat ada DOWN
+  renderZonePanel(zones3d);
+}
+function renderZonePanel(zones) {
+  const panel = $("zonePanel"); if (!panel) return;
+  const active = zones.filter((z) => z.total > 0);
+  if (!active.length) { panel.style.display = "none"; panel.innerHTML = ""; return; }
+  panel.style.display = "";
+  panel.innerHTML = `<div class="sp-zones-title">Zona (${active.length})</div>` + active.map((z) =>
+    `<div class="zone-row" data-zi="${zones.indexOf(z)}"><span class="zone-dot ${z.down > 0 ? "down" : z.up > 0 ? "up" : ""}"></span><span class="zone-name">${esc(z.name)}</span><span class="zone-stat"><b class="${z.down > 0 ? "has-down" : ""}">${z.up}</b>/${z.total}</span></div>`
+  ).join("");
+  panel.querySelectorAll(".zone-row").forEach((row) => (row.onclick = () => focusZone(zones[+row.dataset.zi])));
+}
+function focusZone(z) {
+  if (!z) return;
+  const b = z.bounds, cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
+  const size = Math.max(b.maxX - b.minX, b.maxZ - b.minZ) || 10;
+  const target = new THREE.Vector3(cx, 0.5, cz);
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  const dist = size * 1.1 + 8;
+  startCamAnim(target.clone().add(dir.multiplyScalar(dist)).add(new THREE.Vector3(0, dist * 0.5, 0)), target);
 }
 
 // tema gelap/terang untuk kanvas 3D (background polos + intensitas cahaya ambien)

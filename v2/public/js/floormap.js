@@ -5,14 +5,16 @@
    from the SAME /ws WebSocket. SVG-based, own data (NOT scene.json/3D).
    ===================================================================== */
 
-let ws, activeLoc = null;   // activeLoc dari /api/locations (menentukan layout + nama + WS)
+let ws, activeLoc = null, activeFloor = null;   // dari /api/locations (menentukan layout + nama + WS)
 
 // ===== state =====
 let deviceByIp = {};        // live data keyed by ip
 let markerByIp = {};        // ip -> <g> marker element
 let pins = [];              // from layout2d.json
 const pinByIp = {};         // ip -> pin {x,y,label}
-let selectedIp = null, dtTimer = null, filterMode = "all";
+const lastStatus = {};      // ip -> status sebelumnya (deteksi transisi utk alert E8)
+let selectedIp = null, dtTimer = null, filterMode = "all", alertBaseline = false;
+let zones2d = [], roomEls = [];   // E2/E7 — zona = ruangan (rect utk warna)
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("floormap");
@@ -41,18 +43,20 @@ async function resolveLocation() {
   try {
     const data = await fetch("/api/locations", { cache: "no-store" }).then((r) => r.json());
     const list = data.locations || [];
-    const wanted = new URLSearchParams(location.search).get("loc");
-    activeLoc = list.find((l) => l.id === wanted) || list[0] || null;   // default = urutan pertama
-  } catch { activeLoc = null; }
+    const params = new URLSearchParams(location.search);
+    activeLoc = list.find((l) => l.id === params.get("loc")) || list[0] || null;   // default = urutan pertama
+    const floors = (activeLoc && activeLoc.floors) || [];
+    activeFloor = floors.find((f) => f.id === params.get("floor")) || floors[0] || null;   // E5
+  } catch { activeLoc = null; activeFloor = null; }
   const el = $("sceneInfo"); if (el) el.textContent = activeLoc ? activeLoc.name : "Monitoring";
 }
 async function loadLayout() {
   const param = new URLSearchParams(location.search).get("layout");
-  const url = param || (activeLoc && activeLoc.layout2d) || "/layout2d.json";
+  const url = param || (activeFloor && activeFloor.layout2d) || (activeLoc && activeLoc.layout2d) || "/layout2d.json";
   const setSub = (t) => { const s = $("locSub"); if (s) s.textContent = t; };
   let L = await tryFetch(url);
-  if (L) setSub("Live monitoring");
-  if (!L && !param) { L = await tryFetch("/layout2d.example.json"); if (L) setSub("Denah contoh"); }   // auto-fallback
+  if (L) setSub(activeFloor ? activeFloor.name : "Live monitoring");
+  if (!L && !param) { L = await tryFetch("/layout2d.example.json"); if (L) setSub(activeFloor ? activeFloor.name + " · contoh" : "Denah contoh"); }   // auto-fallback
   if (!L) {
     setSub("Denah belum ada");
     msgEl.style.display = "flex";
@@ -65,16 +69,19 @@ async function loadLayout() {
   if (Array.isArray(L.viewBox)) svg.setAttribute("viewBox", L.viewBox.join(" "));
   buildFloorplan(L);
   buildPins(L.pins || []);
+  buildZones(L);
   connect();
 }
 
 function buildFloorplan(L) {
   // keep the dotgrid background rect (first child of viewport); rebuild floorplan group
   floorplanG.innerHTML = "";
+  roomEls = [];
   (L.rooms || []).forEach((r) => {
     const rect = mk("rect", { class: "lo-room", x: r.x, y: r.y, width: r.w, height: r.h, rx: 4,
       fill: r.color || "rgba(124,147,184,0.05)" });
     floorplanG.appendChild(rect);
+    roomEls.push({ room: r, rect });
     if (r.label) {
       const t = mk("text", { class: "lo-label", x: r.x + r.w / 2, y: r.y + r.h / 2 });
       t.textContent = r.label;
@@ -136,10 +143,19 @@ function applyStatus(devices) {
     if (p.ip === selectedIp) cls += " selected";
     el.setAttribute("class", cls);
     setLabel(el, p.label || (d && d.name) || p.ip);
+    // E8: toast hanya utk PERUBAHAN status (bukan snapshot awal)
+    const newSt = d ? d.status : null, prev = lastStatus[p.ip];
+    if (alertBaseline && newSt && prev !== newSt && window.pulseAlert) {
+      if (newSt === "DOWN") window.pulseAlert((d && d.name) || p.label || p.ip, p.ip, "down");
+      else if (newSt === "UP" && prev === "DOWN") window.pulseAlert((d && d.name) || p.label || p.ip, p.ip, "up");
+    }
+    lastStatus[p.ip] = newSt;
   });
+  alertBaseline = true;
   if (selectedIp && deviceByIp[selectedIp]) renderDetail(deviceByIp[selectedIp]);
   updateSummary();
   applyFilter();   // E4: pertahankan sorotan filter
+  updateZones();   // E2/E7
 }
 
 function makeMarker(p) {
@@ -386,6 +402,44 @@ function flyTo(ip) {                                    // E3: pusatkan + zoom k
 window.pulseGetTargets = () => pins.map((p) => ({ ip: p.ip, name: (deviceByIp[p.ip] && deviceByIp[p.ip].name) || p.label || p.ip, status: deviceByIp[p.ip] ? deviceByIp[p.ip].status : "UNKNOWN" }));
 window.pulseFocus = (ip) => { flyTo(ip); openDetail(ip); };
 window.pulseFilter = (mode) => { filterMode = mode || "all"; applyFilter(); };
+
+// ---- E2/E7 — occupancy & pewarnaan zona (zona 2D = ruangan; pin dipetakan ke rect terkecil yg memuatnya) ----
+function buildZones(L) {
+  zones2d = (L.rooms || []).map((room, i) => ({ name: room.label || `Zona ${i + 1}`, room, rect: roomEls[i] && roomEls[i].rect, ips: [], up: 0, down: 0, total: 0 }));
+  pins.forEach((p) => {
+    let best = null, bestA = Infinity;
+    zones2d.forEach((z) => { const r = z.room; if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { const a = r.w * r.h; if (a < bestA) { bestA = a; best = z; } } });
+    if (best) best.ips.push(p.ip);
+  });
+  updateZones();
+}
+function updateZones() {
+  zones2d.forEach((z) => {
+    let up = 0, down = 0;
+    z.ips.forEach((ip) => { const d = deviceByIp[ip]; if (d && d.status === "UP") up++; else if (d && d.status === "DOWN") down++; });
+    z.up = up; z.down = down; z.total = z.ips.length;
+    if (z.rect) { z.rect.classList.toggle("zone-down", down > 0); z.rect.classList.toggle("zone-up", down === 0 && up > 0); }   // E7
+  });
+  renderZonePanel();
+}
+function renderZonePanel() {
+  const panel = $("zonePanel"); if (!panel) return;
+  const active = zones2d.filter((z) => z.total > 0);
+  if (!active.length) { panel.style.display = "none"; panel.innerHTML = ""; return; }
+  panel.style.display = "";
+  panel.innerHTML = `<div class="sp-zones-title">Zona (${active.length})</div>` + active.map((z) =>
+    `<div class="zone-row" data-zi="${zones2d.indexOf(z)}"><span class="zone-dot ${z.down > 0 ? "down" : z.up > 0 ? "up" : ""}"></span><span class="zone-name">${esc(z.name)}</span><span class="zone-stat"><b class="${z.down > 0 ? "has-down" : ""}">${z.up}</b>/${z.total}</span></div>`
+  ).join("");
+  panel.querySelectorAll(".zone-row").forEach((row) => (row.onclick = () => flyToZone(zones2d[+row.dataset.zi])));
+}
+function flyToZone(z) {
+  if (!z || !z.room) return;
+  const r = z.room, vb = svg.viewBox.baseVal;
+  const k = Math.min(K_MAX, Math.max(1, Math.min(vb.width / Math.max(r.w, 1), vb.height / Math.max(r.h, 1)) * 0.6));
+  view.k = k; view.x = (vb.x + vb.width / 2) - k * (r.x + r.w / 2); view.y = (vb.y + vb.height / 2) - k * (r.y + r.h / 2);
+  viewport.classList.add("flying"); applyView();
+  setTimeout(() => viewport.classList.remove("flying"), 450);
+}
 
 // ===== Start =====
 applyView();

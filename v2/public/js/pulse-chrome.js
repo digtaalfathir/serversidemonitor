@@ -10,18 +10,21 @@
   const CURRENT_VIEW = document.body.dataset.view === "2d" ? "2d" : "3d";
   const locParam = params.get("loc");
 
-  function buildURL(loc, view) {
+  const floorParam = params.get("floor");
+  function buildURL(loc, view, floor) {
     const page = view === "2d" ? "/floormap.html" : "/";
     const qs = new URLSearchParams();
     if (loc) qs.set("loc", loc);
+    if (floor) qs.set("floor", floor);
     qs.set("view", view);
     return `${page}?${qs.toString()}`;
   }
+  const esc = (s) => { const d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; };
 
   // ---- deep-link: hormati ?view= kalau beda dgn halaman ini (mis. /?view=2d → pindah ke 2D) ----
   const wantView = params.get("view");
-  if (wantView === "2d" && CURRENT_VIEW === "3d") { location.replace(buildURL(locParam, "2d")); return; }
-  if (wantView === "3d" && CURRENT_VIEW === "2d") { location.replace(buildURL(locParam, "3d")); return; }
+  if (wantView === "2d" && CURRENT_VIEW === "3d") { location.replace(buildURL(locParam, "2d", floorParam)); return; }
+  if (wantView === "3d" && CURRENT_VIEW === "2d") { location.replace(buildURL(locParam, "3d", floorParam)); return; }
 
   // ---- tema ----
   const themeBtn = document.getElementById("themeToggle");
@@ -37,12 +40,12 @@
   }
 
   // ---- toggle 2D / 3D (pindah viewer, bawa lokasi + view) ----
-  let activeLocId = locParam;                 // di-update setelah fetch (default = lokasi pertama)
+  let activeLocId = locParam, activeFloorId = floorParam;   // di-update setelah fetch
   const t3d = document.getElementById("t3d"), t2d = document.getElementById("t2d");
-  if (t3d) t3d.onclick = () => { if (CURRENT_VIEW !== "3d") location.href = buildURL(activeLocId, "3d"); };
-  if (t2d) t2d.onclick = () => { if (CURRENT_VIEW !== "2d") location.href = buildURL(activeLocId, "2d"); };
+  if (t3d) t3d.onclick = () => { if (CURRENT_VIEW !== "3d") location.href = buildURL(activeLocId, "3d", activeFloorId); };
+  if (t2d) t2d.onclick = () => { if (CURRENT_VIEW !== "2d") location.href = buildURL(activeLocId, "2d", activeFloorId); };
 
-  // ---- pemilih lokasi (D2) — hanya muncul kalau ada >1 lokasi ----
+  // ---- pemilih lokasi (D2) + pemilih lantai (E5) ----
   const nav = document.getElementById("locNav");
   fetch("/api/locations", { cache: "no-store" })
     .then((r) => r.json())
@@ -50,18 +53,26 @@
       const list = data.locations || [];
       const active = list.find((l) => l.id === locParam) || list[0] || null;
       activeLocId = active ? active.id : locParam;
-      if (!nav || list.length <= 1) return;   // 1 lokasi → nama sudah tampil di panel kiri, tak perlu dropdown
-      const sel = document.createElement("select");
-      sel.className = "loc-select";
-      sel.setAttribute("aria-label", "Pilih lokasi");
-      list.forEach((l) => {
-        const o = document.createElement("option");
-        o.value = l.id; o.textContent = l.name;
-        if (active && l.id === active.id) o.selected = true;
-        sel.appendChild(o);
-      });
-      sel.onchange = () => (location.href = buildURL(sel.value, CURRENT_VIEW));   // D3: pindah lokasi, view tetap
-      nav.appendChild(sel);
+      const floors = (active && active.floors) || [];
+      const activeFloor = floors.find((f) => f.id === floorParam) || floors[0] || null;
+      activeFloorId = activeFloor ? activeFloor.id : null;
+      if (!nav) return;
+      // dropdown lokasi — hanya jika >1 lokasi (1 lokasi → nama sudah di panel kiri)
+      if (list.length > 1) {
+        const sel = document.createElement("select");
+        sel.className = "loc-select"; sel.setAttribute("aria-label", "Pilih lokasi");
+        list.forEach((l) => { const o = document.createElement("option"); o.value = l.id; o.textContent = l.name; if (active && l.id === active.id) o.selected = true; sel.appendChild(o); });
+        sel.onchange = () => (location.href = buildURL(sel.value, CURRENT_VIEW));   // pindah lokasi → lantai reset ke default
+        nav.appendChild(sel);
+      }
+      // dropdown lantai — hanya jika lokasi aktif punya >1 lantai
+      if (floors.length > 1) {
+        const fsel = document.createElement("select");
+        fsel.className = "loc-select floor-select"; fsel.setAttribute("aria-label", "Pilih lantai");
+        floors.forEach((f) => { const o = document.createElement("option"); o.value = f.id; o.textContent = f.name; if (activeFloor && f.id === activeFloor.id) o.selected = true; fsel.appendChild(o); });
+        fsel.onchange = () => (location.href = buildURL(activeLocId, CURRENT_VIEW, fsel.value));   // pindah lantai, lokasi+view tetap
+        nav.appendChild(fsel);
+      }
     })
     .catch(() => {});
 
@@ -113,4 +124,41 @@
       };
     });
   }
+
+  // ---- E8: alert (toast + suara) saat device turun/pulih. Viewer memanggil window.pulseAlert(). ----
+  const toastWrap = document.createElement("div");
+  toastWrap.className = "toast-wrap";
+  document.body.appendChild(toastWrap);
+
+  let audioCtx = null, soundOn = localStorage.getItem("pulse-sound") === "1";
+  const soundBtn = document.getElementById("soundToggle");
+  function setSound(on) {
+    soundOn = on; localStorage.setItem("pulse-sound", on ? "1" : "0");
+    if (soundBtn) { soundBtn.textContent = on ? "🔔" : "🔕"; soundBtn.title = on ? "Suara alert: ON" : "Suara alert: OFF"; }
+    if (on && !audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }   // dibuka saat gesture klik → tak diblokir
+  }
+  if (soundBtn) { soundBtn.onclick = () => setSound(!soundOn); setSound(soundOn); }
+  function beep() {
+    if (!soundOn || !audioCtx) return;
+    try {
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime;
+      o.connect(g); g.connect(audioCtx.destination); o.type = "sine"; o.frequency.value = 660;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+      o.start(t); o.stop(t + 0.3);
+    } catch (e) {}
+  }
+  window.pulseAlert = (name, ip, kind) => {
+    const down = kind === "down";
+    const el = document.createElement("div");
+    el.className = "toast " + (down ? "down" : "up");
+    el.innerHTML = `<span class="toast-ico">${down ? "▲" : "✓"}</span>
+      <div class="toast-body"><div class="toast-title">${esc(name || ip)}</div>
+        <div class="toast-sub">${esc(ip)} · ${down ? "DEVICE DOWN" : "PULIH (UP)"}</div></div>`;
+    el.onclick = () => { if (window.pulseFocus) window.pulseFocus(ip); };
+    toastWrap.appendChild(el);
+    requestAnimationFrame(() => el.classList.add("show"));
+    if (down) beep();
+    setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 320); }, 6000);
+  };
 })();

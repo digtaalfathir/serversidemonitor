@@ -36,7 +36,14 @@ const findLoc = (id) => LOCATIONS.find((l) => l.id === id) || LOCATIONS[0];
 const app = express();
 // daftar tempat untuk frontend (URL WS upstream TIDAK diekspos)
 app.get("/api/locations", (_req, res) => {
-  res.json({ locations: LOCATIONS.map((l) => ({ id: l.id, name: l.name, scene3d: l.scene3d || "/scene.json", layout2d: l.layout2d || "/layout2d.json" })) });
+  res.json({
+    locations: LOCATIONS.map((l) => ({
+      id: l.id, name: l.name,
+      scene3d: l.scene3d || "/scene.json", layout2d: l.layout2d || "/layout2d.json",
+      // E5: lantai (opsional) — file per lantai, WS upstream tetap TIDAK diekspos
+      floors: Array.isArray(l.floors) ? l.floors.map((f) => ({ id: f.id, name: f.name, scene3d: f.scene3d, layout2d: f.layout2d })) : undefined,
+    })),
+  });
 });
 app.use(express.static(path.join(__dirname, "public")));
 
