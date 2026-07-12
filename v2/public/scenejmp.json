@@ -1,0 +1,1098 @@
+{
+  "version": 1,
+  "units": "m",
+  "walls": [
+    {
+      "points": [
+        [
+          -15,
+          4.5
+        ],
+        [
+          -10.5,
+          4.5
+        ],
+        [
+          -10.5,
+          10
+        ],
+        [
+          -15,
+          10
+        ],
+        [
+          -15,
+          10
+        ]
+      ],
+      "height": 3,
+      "thickness": 0.15,
+      "color": "#8fa3c4",
+      "closed": true,
+      "openings": [
+        {
+          "seg": 1,
+          "dist": 2.536,
+          "width": 0.9,
+          "top": 1.5,
+          "sill": 0
+        }
+      ]
+    },
+    {
+      "points": [
+        [
+          -15,
+          4.5
+        ],
+        [
+          -15,
+          -2
+        ],
+        [
+          -11.5,
+          -2
+        ],
+        [
+          -11.5,
+          4.5
+        ],
+        [
+          -11.5,
+          4.5
+        ]
+      ],
+      "height": 3,
+      "thickness": 0.15,
+      "color": "#8fa3c4",
+      "closed": true,
+      "openings": [
+        {
+          "seg": 2,
+          "dist": 5.762,
+          "width": 0.9,
+          "top": 1.5,
+          "sill": 0
+        },
+        {
+          "seg": 2,
+          "dist": 1.004,
+          "width": 0.9,
+          "top": 1.5,
+          "sill": 0
+        }
+      ]
+    },
+    {
+      "points": [
+        [
+          -15,
+          2
+        ],
+        [
+          -11.5,
+          2
+        ],
+        [
+          -11.5,
+          2
+        ],
+        [
+          -11.5,
+          2
+        ]
+      ],
+      "height": 3,
+      "thickness": 0.15,
+      "color": "#8fa3c4",
+      "closed": true,
+      "openings": []
+    }
+  ],
+  "floors": [
+    {
+      "x": 0,
+      "z": 0,
+      "w": 30,
+      "d": 20,
+      "type": "concrete",
+      "color": "#3a3f47",
+      "order": 1
+    },
+    {
+      "x": 11.75,
+      "z": 8.75,
+      "w": 6.5,
+      "d": 0.5,
+      "type": "green",
+      "color": "#3a3f47",
+      "order": 2
+    },
+    {
+      "x": -2.25,
+      "z": 8.75,
+      "w": 14.5,
+      "d": 0.5,
+      "type": "green",
+      "color": "#3a3f47",
+      "order": 3
+    },
+    {
+      "x": -9.75,
+      "z": 6.25,
+      "w": 0.5,
+      "d": 5.5,
+      "type": "green",
+      "color": "#3a3f47",
+      "order": 4
+    },
+    {
+      "x": -10.25,
+      "z": 3.75,
+      "w": 1.5,
+      "d": 0.5,
+      "type": "green",
+      "color": "#3a3f47",
+      "order": 5
+    },
+    {
+      "x": -10.75,
+      "z": 0.5,
+      "w": 0.5,
+      "d": 7,
+      "type": "green",
+      "color": "#3a3f47",
+      "order": 6
+    },
+    {
+      "x": -12,
+      "z": -2.75,
+      "w": 3,
+      "d": 0.5,
+      "type": "green",
+      "color": "#3a3f47",
+      "order": 7
+    },
+    {
+      "x": -13.75,
+      "z": -6,
+      "w": 0.5,
+      "d": 7,
+      "type": "green",
+      "color": "#3a3f47",
+      "order": 8
+    }
+  ],
+  "models": [
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        -4.5,
+        -1,
+        -4.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        -3,
+        -1,
+        -4.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        -4,
+        -1,
+        -4.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        11,
+        0,
+        -6
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        10,
+        0,
+        -6
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        10,
+        0,
+        -4.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        11,
+        0,
+        -4.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        11,
+        0,
+        -3
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        10,
+        0,
+        -3
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        11,
+        0,
+        -1.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        10,
+        0,
+        -1.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        11,
+        0,
+        0
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        10,
+        0,
+        0
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        11,
+        0,
+        1.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        10,
+        0,
+        1.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        11,
+        -0.5,
+        3
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        10,
+        -0.5,
+        3
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        10,
+        -0.5,
+        4.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        11,
+        -0.5,
+        4.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        7.5,
+        -1.5,
+        5.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        6,
+        -1.5,
+        5.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        7,
+        -1.5,
+        5.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        6.5,
+        0,
+        -6
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        1.571
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        6.5,
+        0,
+        -5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        1.571
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        6.5,
+        0,
+        -2
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        1.571
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        6.5,
+        0,
+        -3
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        1.571
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        3,
+        0,
+        -6
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        2,
+        0,
+        -6
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        2,
+        0,
+        -4.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        3,
+        0,
+        -4.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        2,
+        0,
+        -3
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        3,
+        0,
+        -3
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        2,
+        0,
+        -1.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        3,
+        0,
+        -1.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        3,
+        0,
+        0
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        2,
+        0,
+        0
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        2,
+        0,
+        1.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/pallet_stack_blue.glb",
+      "name": "pallet_stack_blue",
+      "deviceIp": "",
+      "position": [
+        3,
+        0,
+        1.5
+      ],
+      "rotation": [
+        -1.571,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/forklift.glb",
+      "name": "forklift",
+      "deviceIp": "",
+      "position": [
+        17,
+        -0.049,
+        -69
+      ],
+      "rotation": [
+        0,
+        -1.571,
+        0
+      ],
+      "scale": [
+        0.014,
+        0.014,
+        0.014
+      ]
+    },
+    {
+      "url": "/models/forklift.glb",
+      "name": "forklift",
+      "deviceIp": "",
+      "position": [
+        72,
+        -0.049,
+        1
+      ],
+      "rotation": [
+        3.141,
+        0,
+        3.141
+      ],
+      "scale": [
+        0.014,
+        0.014,
+        0.014
+      ]
+    },
+    {
+      "url": "/models/rfid_gate.glb",
+      "name": "rfid_gate",
+      "deviceIp": "",
+      "position": [
+        -3.5,
+        0,
+        -9.5
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "url": "/models/rfid_gate.glb",
+      "name": "rfid_gate",
+      "deviceIp": "",
+      "position": [
+        7,
+        0,
+        9.5
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "pins": [
+    {
+      "x": 7,
+      "z": 9,
+      "ip": "192.168.0.241",
+      "label": "Gate Inbound"
+    },
+    {
+      "x": -3.5,
+      "z": -9,
+      "ip": "192.168.0.242",
+      "label": "Gate Outbound"
+    },
+    {
+      "x": -13.5,
+      "z": 5.5,
+      "ip": "10.10.1.223",
+      "label": "Server"
+    }
+  ],
+  "texts": [
+    {
+      "x": -12.5,
+      "y": 1.5,
+      "z": 7.5,
+      "text": "Office",
+      "size": 0.8,
+      "color": "#a5b4fc"
+    },
+    {
+      "x": -13.5,
+      "y": 1.5,
+      "z": 3,
+      "text": "Musholla",
+      "size": 0.8,
+      "color": "#a5b4fc"
+    },
+    {
+      "x": -13.5,
+      "y": 1.5,
+      "z": 0,
+      "text": "WC",
+      "size": 0.8,
+      "color": "#a5b4fc"
+    }
+  ],
+  "lighting": {
+    "exposure": 0.8,
+    "sunElevation": 33,
+    "sunAzimuth": 85,
+    "sunIntensity": 1.8,
+    "ambient": 0.4,
+    "bloom": {
+      "strength": 0,
+      "threshold": 0.9,
+      "radius": 0.5
+    }
+  },
+  "camera": {
+    "position": [
+      -15.98,
+      15.692,
+      18.571
+    ],
+    "target": [
+      -3.463,
+      -3.234,
+      0.135
+    ]
+  }
+}
