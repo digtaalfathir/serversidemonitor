@@ -161,4 +161,20 @@
     if (down) beep();
     setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 320); }, 6000);
   };
+
+  // ---- F3: Share — salin deep-link read-only (lokasi + lantai + view saat ini) ----
+  function chromeToast(msg) {
+    const el = document.createElement("div");
+    el.className = "toast info";
+    el.innerHTML = `<span class="toast-ico">🔗</span><div class="toast-body"><div class="toast-title">${esc(msg)}</div></div>`;
+    toastWrap.appendChild(el);
+    requestAnimationFrame(() => el.classList.add("show"));
+    setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 320); }, 3500);
+  }
+  const shareBtn = document.getElementById("shareBtn");
+  if (shareBtn) shareBtn.onclick = async () => {
+    const url = location.origin + buildURL(activeLocId, CURRENT_VIEW, activeFloorId);
+    try { await navigator.clipboard.writeText(url); chromeToast("Link monitor disalin ✓"); }
+    catch (e) { chromeToast(url); }
+  };
 })();

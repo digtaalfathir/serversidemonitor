@@ -36,16 +36,18 @@ flat/clean, low-poly** (Cisco pun begitu — lihat referensi), dan gampang diraw
 
 | Komponen | File | Fungsi |
 |---|---|---|
-| v1 dashboard | `public/dashboard.html` (+ backend) | Kartu status device (produksi, jangan diubah) |
-| 2D Floor Map | `public/floormap.html` | Denah SVG blueprint + marker status live (denah masih hardcoded) |
-| 3D demo | `public/floormap3d.html` + `js/floorplan-data.js` | 3D dari data denah (extrude), flat |
-| **Scene Builder** | `public/scene-builder.html` | Authoring 3D: tembok, **lubang pintu/jendela**, lantai (+urutan), pin, **teks**, model `.glb`, lighting, guide "lurus", copy-paste, Simpan/Muat `scene.json` |
-| **Scene View** | `public/scene-view.html` | Runtime: muat `scene.json` + status live (WYSIWYG, tooltip + panel detail) |
-| **v2 Cisco (parkir)** | `unused/v2-cisco/v2.html` | Standalone 1-file, muat `scene.json` + model, tampilan kartu Cisco flat |
-| Skema data | `scene.json` | walls/floors/pins/models/texts/lighting/camera |
-| Aset 3D | `public/vendor/three/`, `public/models/` | Three.js ter-vendor (offline), folder model |
+| v1 dashboard | `src/app.js` (+ `public/`) | Kartu status device v1 (produksi, jangan diubah). Port 10101 |
+| **Stechoq Pulse — Viewer 3D** | `v2/public/index.html` + `js/scene-view.js` | Monitoring 3D (default). Muat `scene.json` per lokasi/lantai + status live |
+| **Stechoq Pulse — Viewer 2D** | `v2/public/floormap.html` + `js/floormap.js` | Monitoring 2D (SVG). Muat `layout2d.json` + status live |
+| Chrome bersama | `v2/public/js/pulse-chrome.js` | Tema, toggle 2D/3D, deep-link, dropdown lokasi/lantai, cari, filter, alert, share |
+| Tema | `v2/public/css/pulse.css` | Dark/light, aksen biru, responsif |
+| Server v2 | `v2/server.js` + `v2/locations.json` | Statik + `/api/locations` + proxy `/ws?loc=<id>` ke WS eksternal. Port 10102 |
+| **Builder (standalone)** | `builder/` (3D + 2D, port 10103) | Authoring `scene.json` / `layout2d.json` (terpisah dari monitoring) |
+| Skema data | `scene.json`, `layout2d.json`, `locations.json` | 3D / 2D / registry lokasi (+ `floors`) |
+| Aset 3D | `v2/public/vendor/three/`, `v2/public/models/` | Three.js ter-vendor (offline), folder model |
 
-**Linking device sudah jalan:** samakan IP → runtime warnai marker hijau/merah.
+**Linking device sudah jalan:** samakan IP (`pin.ip`/`model.deviceIp` = `device.ip`) → runtime warnai marker hijau/merah.
+**Fase A–F selesai** (kecuali E6 library aset & LOD runtime). Berikutnya: **Fase G (package npm)** bila diperlukan.
 
 ---
 
@@ -116,37 +118,33 @@ flat/clean, low-poly** (Cisco pun begitu — lihat referensi), dan gampang diraw
 > Menjawab "banyak tempat" + "ada tipe 2D & 3D". 2D & 3D tetap data terpisah;
 > toggle hanya memilih viewer + file mana yang dimuat untuk lokasi terpilih.
 
-- [ ] **D1 — Registry lokasi** (M)
-  - `locations.json` → `[{ id, name, scene3d: "/scenes/gudang-a.json", layout2d: "/layouts/gudang-a.json" }, …]`.
-  - **Nambah lokasi = tambah 1 entri + file-nya.** Itu saja.
-- [ ] **D2 — Pemilih lokasi** (S) — dropdown "Building 01 / 02 …" (ala Cisco) untuk pindah tempat.
-- [ ] **D3 — Toggle 2D / 3D per lokasi** (S)
-  - Satu shell viewer: tombol **2D** memuat `layout2d`, tombol **3D** memuat `scene3d` lokasi terpilih.
-  - Deep-link: `?loc=gudang-a&view=3d`.
-- [ ] **D4 — Status live lintas lokasi** (S) — device di lokasi mana pun tetap dicocokkan by-IP.
+- [x] **D1 — Registry lokasi** (M) — `locations.json` `[{id,name,ws,scene3d,layout2d,floors?}]`; server `/api/locations` (ws disembunyikan). Nambah lokasi = 1 entri + file.
+- [x] **D2 — Pemilih lokasi** (S) — dropdown di `#locNav` (pulse-chrome.js), muncul bila >1 lokasi.
+- [x] **D3 — Toggle 2D / 3D per lokasi** (S) — `index.html`=3D, `floormap.html`=2D; deep-link `?loc=&floor=&view=` (redirect otomatis bila halaman salah view).
+- [x] **D4 — Status live lintas lokasi** (S) — WS proxy per-`loc`, cocok by-IP.
 
 ---
 
 ### Fase E — Kelengkapan Fitur ala Cisco
 
-- [ ] **E1 — Klik device → panel detail** (S) — latency avg/peak, uptime, downtime, recent events (sudah ada di scene-view; port ke v2 Cisco).
-- [ ] **E2 — Panel per-zona / occupancy** (M) — statistik per ruangan/zona (up/down per zona), seperti panel kiri Cisco.
-- [ ] **E3 — Cari device / "Where am I"** (S) — search nama/IP → sorot & fly-to marker.
-- [ ] **E4 — Filter & sorot** (S) — filter status/severity; device DOWN otomatis berkedip/menonjol.
-- [ ] **E5 — Multi-lantai / multi-gedung** (M) — dropdown lantai; `scene.json` per lantai atau field `level`.
-- [ ] **E6 — Library equipment 3D** (M) — kumpulan `.glb` (mesin inject, forklift, rak, gate RFID) siap pakai + tipe device.
-- [ ] **E7 — Zona berwarna status** (M) — lantai/zona ikut berubah warna kalau ada device down di dalamnya (heat/status zone).
-- [ ] **E8 — Alert/notifikasi** (M) — highlight + toast + (opsional) suara saat device turun.
-- [ ] **E9 — Kartu status "Cisco"** (S) — kartu melayang polish (sudah di v2), tambah ikon severity & mini-trend.
+- [x] **E1 — Klik device → panel detail** (S) — avg/peak, uptime, downtime, events; termasuk state "tidak ada data live".
+- [x] **E2 — Panel per-zona / occupancy** (M) — `#zonePanel` up/total per zona; 2D=ruangan, 3D=lantai (pemetaan by koordinat). Klik zona → fly-to.
+- [x] **E3 — Cari device / "Where am I"** (S) — kotak cari (nama/IP) → sorot & fly-to (hook `pulseGetTargets`/`pulseFocus`).
+- [x] **E4 — Filter & sorot** (S) — Semua/Up/Down redupkan yg tak cocok; DOWN berkedip.
+- [x] **E5 — Multi-lantai / multi-gedung** (M) — `floors:[{id,name,scene3d,layout2d}]`; dropdown lantai; deep-link `?floor=`; WS tetap per-lokasi.
+- [ ] **E6 — Library equipment 3D** (M) — kumpulan `.glb` siap pakai (mesin inject, forklift, rak, gate RFID). *(tugas aset di Builder — belum)*
+- [x] **E7 — Zona berwarna status** (M) — ruangan 2D `.zone-down`; lantai 3D `material.color` memerah saat ada DOWN.
+- [x] **E8 — Alert/notifikasi** (M) — toast down/pulih (klik→fly-to) + tombol suara (WebAudio); hanya utk perubahan, bukan snapshot awal.
+- [x] **E9 — Kartu status "Cisco"** (S) — ikon severity di badge + mini-trend status (24 event terakhir).
 
 ---
 
 ### Fase F — Kualitas, Performa Lanjut, Deploy
 
-- [ ] **F1 — Aset teroptimasi** (M) — kompresi `.glb` Draco/meshopt, LOD untuk model jauh.
-- [ ] **F2 — Responsif / mobile** (M) — layout panel adaptif, kontrol sentuh.
-- [ ] **F3 — Persistensi & share** (M) — simpan beberapa scene, link share read-only.
-- [ ] **F4 — Uji lintas-browser & fallback** (S) — pesan bila WebGL tidak didukung (sudah ada splash di beberapa halaman).
+- [~] **F1 — Aset teroptimasi** (M) — viewer **siap meshopt** (`setupDecoders()` deteksi decoder di `/vendor`, aman bila belum ada); pipeline kompresi + vendor decoder + LOD didokumentasikan di [`PERFORMA-ASET.md`](PERFORMA-ASET.md). LOD runtime = langkah aset (belum). Model sudah load-once+clone (A2) + clipping.
+- [x] **F2 — Responsif / mobile** (M) — media query (≤820/≤560px): panel & header adaptif, detail full-width, toast lebar-penuh; sentuh sudah didukung OrbitControls + pointer-events SVG.
+- [x] **F3 — Persistensi & share** (M) — banyak scene via `locations.json`/`floors`; tombol **Share** (🔗) menyalin deep-link **read-only** (`?loc=&floor=&view=`) — viewer memang read-only.
+- [x] **F4 — Uji lintas-browser & fallback** (S) — deteksi WebGL; bila tak ada → pesan + tautan ke tampilan 2D (SVG, tanpa WebGL).
 
 ---
 

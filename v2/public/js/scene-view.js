@@ -48,19 +48,42 @@ const UNKNOWN_HEX = 0x6b7280;
 const modelClip = new THREE.Plane(new THREE.Vector3(0, 1, 0), 1e6);
 
 // =====================================================================
-try {
-  initThree();
-  bindInteraction();
-  animate();
-  boot();
-} catch (err) { showError(err); }
+// F4 — cek dukungan WebGL dulu; kalau tak ada, tampilkan pesan + tawarkan tampilan 2D (SVG).
+if (!webglSupported()) {
+  splash.classList.remove("hidden"); splash.classList.add("error");
+  const l = new URLSearchParams(location.search).get("loc");
+  splashMsg.innerHTML = `Browser / perangkat ini tidak mendukung <b>WebGL</b> untuk tampilan 3D.<br>` +
+    `Coba browser modern (Chrome/Edge/Firefox) atau aktifkan akselerasi hardware.<br><br>` +
+    `<a href="/floormap.html${l ? "?loc=" + encodeURIComponent(l) : ""}" style="color:var(--accent);text-decoration:underline">Buka tampilan 2D →</a>`;
+} else {
+  try {
+    initThree();
+    bindInteraction();
+    animate();
+    boot();
+  } catch (err) { showError(err); }
+}
+function webglSupported() {
+  try { const c = document.createElement("canvas"); return !!(window.WebGLRenderingContext && (c.getContext("webgl2") || c.getContext("webgl"))); }
+  catch (e) { return false; }
+}
 
 // Lokasi + lantai aktif (dari locations.json) → menentukan scene + nama panel + WS.
 let activeLoc = null, activeFloor = null;
 async function boot() {
   await resolveLocation();
+  await setupDecoders();     // F1: aktifkan .glb terkompresi bila decoder-nya sudah di-vendor
   connectWS();
   loadScene();
+}
+// F1 — dukung .glb meshopt (EXT_meshopt_compression) BILA decoder-nya ada di /vendor.
+// Aman kalau belum: probe HEAD dulu → tak ada = dilewati (.glb non-kompresi tetap jalan). Draco: lihat docs.
+async function setupDecoders() {
+  const url = "/vendor/three/addons/libs/meshopt_decoder.module.js";
+  try {
+    const r = await fetch(url, { method: "HEAD" });
+    if (r.ok) { const { MeshoptDecoder } = await import(url); loader.setMeshoptDecoder(MeshoptDecoder); }
+  } catch (e) { /* decoder belum tersedia */ }
 }
 async function resolveLocation() {
   try {
