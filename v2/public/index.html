@@ -25,16 +25,12 @@
   </style>
 </head>
 <body>
-  <h1>🏗️ Digital Twin</h1>
-  <div class="tag">MONITORING v2 · BERDIRI SENDIRI</div>
-  <div class="sub">Aplikasi v2 terpisah dari app monitoring. Status device live diambil dari backend monitoring lewat WebSocket (proxy).</div>
+  <h1>🛰️ Monitoring 3D/2D</h1>
+  <div class="tag">v2 · FOKUS MONITORING</div>
+  <div class="sub">App monitoring (viewer). Status device live dari backend monitoring lewat WebSocket (proxy). Denah dibuat di <b>Builder</b> (app terpisah, <b>npm run builder</b>).</div>
   <div class="grid">
-    <a class="card" href="/builder/">
-      <div class="ic">🏗️</div><div class="t">Builder (3D / 2D)</div>
-      <div class="d">Satu app — tinggal pilih 3D atau 2D. Bikin denah → simpan scene.json / layout2d.json</div>
-    </a>
     <a class="card" href="/scene-view.html">
-      <div class="ic">🛰️</div><div class="t">Viewer 3D</div>
+      <div class="ic">🧊</div><div class="t">Viewer 3D</div>
       <div class="d">Muat scene.json + status device live (hijau/merah by-IP)</div>
     </a>
     <a class="card" href="/floormap.html">
@@ -43,8 +39,8 @@
     </a>
   </div>
   <div class="foot">
-    Jalankan: <b>npm run v2</b> (port 10102) · Status device di-proxy dari backend monitoring (<b>npm start</b>, port 10101).<br>
-    Belum ada scene? Buka <b>Builder</b> → pilih 3D/2D → Simpan → taruh <b>scene.json</b> / <b>layout2d.json</b> di <b>v2/public/</b>. Contoh: <a href="/scene-view.html?scene=/scene.example.json" style="color:#818cf8">3D</a> · <a href="/floormap.html?layout=/layout2d.example.json" style="color:#818cf8">2D</a>.
+    Jalankan: <b>npm run v2</b> (port 10102) · status dari backend <b>npm start</b> (10101). Builder: <b>npm run builder</b> (10103).<br>
+    Coba contoh: <a href="/scene-view.html?scene=/scene.example.json" style="color:#818cf8">3D</a> · <a href="/floormap.html?layout=/layout2d.example.json" style="color:#818cf8">2D</a>. Buat sendiri di Builder → taruh <b>scene.json</b>/<b>layout2d.json</b> di <b>v2/public/</b>.
   </div>
 </body>
 </html>

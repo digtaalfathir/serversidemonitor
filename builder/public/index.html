@@ -31,19 +31,17 @@
       <button id="b2d">2D</button>
     </div>
     <span class="spacer"></span>
-    <a class="lnk" id="lnkViewer" href="/scene-view.html" target="_blank">Buka Viewer ↗</a>
-    <a class="lnk" href="/">Home</a>
+    <span class="lnk" style="cursor:default;color:#64748b">Simpan → taruh di app monitoring (v2)</span>
   </div>
   <iframe id="frame" title="builder"></iframe>
 
   <script>
     const frame = document.getElementById("frame");
-    const b3d = document.getElementById("b3d"), b2d = document.getElementById("b2d"), lnkViewer = document.getElementById("lnkViewer");
+    const b3d = document.getElementById("b3d"), b2d = document.getElementById("b2d");
     function setMode(m) {
       frame.src = m === "2d" ? "2d/" : "3d/";
       b3d.classList.toggle("active", m === "3d");
       b2d.classList.toggle("active", m === "2d");
-      lnkViewer.href = m === "2d" ? "/floormap.html" : "/scene-view.html";
       if (location.hash.slice(1) !== m) history.replaceState(null, "", "#" + m);
     }
     b3d.onclick = () => setMode("3d");
