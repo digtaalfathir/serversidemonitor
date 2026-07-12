@@ -19,7 +19,7 @@
     <div class="brand"><span class="pulse"></span>Stechoq <b>Pulse</b></div>
     <div class="seg">
       <button id="t3d" class="active">3D</button>
-      <button id="t2d" disabled title="2D — segera">2D</button>
+      <button id="t2d" title="Tampilan denah 2D">2D</button>
     </div>
     <span class="tb-spacer"></span>
     <span class="tb-item" id="lastUpdate">Menyambung…</span>
@@ -83,6 +83,10 @@
       }
       btn.onclick = () => apply(html.getAttribute("data-theme") === "light" ? "dark" : "light");
       btn.textContent = html.getAttribute("data-theme") === "light" ? "☀️" : "🌙";
+      // toggle 2D → pindah ke halaman denah 2D (tema & lokasi ikut)
+      const l = new URLSearchParams(location.search).get("loc");
+      const q = l ? "?loc=" + encodeURIComponent(l) : "";
+      document.getElementById("t2d").onclick = () => (location.href = "/floormap.html" + q);
     })();
   </script>
   <script type="module" src="/js/scene-view.js"></script>

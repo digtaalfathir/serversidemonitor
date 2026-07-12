@@ -5,10 +5,7 @@
    from the SAME /ws WebSocket. SVG-based, own data (NOT scene.json/3D).
    ===================================================================== */
 
-const protocol = location.protocol === "https:" ? "wss" : "ws";
-const _loc = new URLSearchParams(location.search).get("loc");   // tempat mana (multi-lokasi)
-const WS_URL = `${protocol}://${location.host}/ws${_loc ? "?loc=" + encodeURIComponent(_loc) : ""}`;
-let ws;
+let ws, activeLoc = null;   // activeLoc dari /api/locations (menentukan layout + nama + WS)
 
 // ===== state =====
 let deviceByIp = {};        // live data keyed by ip
@@ -36,22 +33,38 @@ async function tryFetch(u) {
   try { const r = await fetch(u, { cache: "no-store" }); if (!r.ok) return null; return JSON.parse(await r.text()); }
   catch { return null; }
 }
+async function boot() {
+  await resolveLocation();
+  loadLayout();
+}
+async function resolveLocation() {
+  try {
+    const data = await fetch("/api/locations", { cache: "no-store" }).then((r) => r.json());
+    const list = data.locations || [];
+    const wanted = new URLSearchParams(location.search).get("loc");
+    activeLoc = list.find((l) => l.id === wanted) || list[0] || null;   // default = urutan pertama
+  } catch { activeLoc = null; }
+  const el = $("sceneInfo"); if (el) el.textContent = activeLoc ? activeLoc.name : "Monitoring";
+}
 async function loadLayout() {
   const param = new URLSearchParams(location.search).get("layout");
-  let L = await tryFetch(param || "/layout2d.json");
-  let info = param ? param.split("/").pop() : "layout2d.json";
-  if (!L && !param) { L = await tryFetch("/layout2d.example.json"); info = "contoh (example)"; }   // auto-fallback
+  const url = param || (activeLoc && activeLoc.layout2d) || "/layout2d.json";
+  const setSub = (t) => { const s = $("locSub"); if (s) s.textContent = t; };
+  let L = await tryFetch(url);
+  if (L) setSub("Live monitoring");
+  if (!L && !param) { L = await tryFetch("/layout2d.example.json"); if (L) setSub("Denah contoh"); }   // auto-fallback
   if (!L) {
+    setSub("Denah belum ada");
     msgEl.style.display = "flex";
-    msgEl.innerHTML = `Belum ada <b>layout2d.json</b>.<br>Buat di <b>Builder 2D</b> lalu simpan di <b>v2/public/</b>.<br><br>` +
-      `<a href="?layout=/layout2d.example.json" style="color:#818cf8;text-decoration:underline">Buka contoh →</a>`;
-    connect();     // tetap sambungkan WS supaya summary tetap jalan
+    msgEl.innerHTML = `Belum ada denah <b>${url}</b> untuk lokasi ini.<br>Buat di <b>Builder 2D</b> lalu simpan di <b>v2/public/</b>.<br><br>` +
+      `<a href="?layout=/layout2d.example.json" style="color:var(--accent);text-decoration:underline">Buka contoh →</a>`;
+    buildPins([]);   // total = 0
+    connect();       // tetap sambungkan WS supaya summary tetap jalan
     return;
   }
   if (Array.isArray(L.viewBox)) svg.setAttribute("viewBox", L.viewBox.join(" "));
   buildFloorplan(L);
   buildPins(L.pins || []);
-  $("layoutInfo").textContent = "layout: " + info;
   connect();
 }
 
@@ -94,15 +107,17 @@ function buildPins(pinList) {
 //  WEBSOCKET + live status
 // ===================================================================
 function connect() {
-  ws = new WebSocket(WS_URL);
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  const loc = (activeLoc && activeLoc.id) || new URLSearchParams(location.search).get("loc");
+  ws = new WebSocket(`${proto}://${location.host}/ws${loc ? "?loc=" + encodeURIComponent(loc) : ""}`);
   ws.onopen = () => setConn(true);
   ws.onclose = () => { setConn(false); setTimeout(connect, 3000); };
   ws.onerror = () => ws.close();
   ws.onmessage = (e) => {
     let msg; try { msg = JSON.parse(e.data); } catch { return; }
     if (msg.type === "cmd_result") return;
-    if (msg.devices) { applyStatus(msg.devices); updateSummary(msg.devices); }
-    if (msg.timestamp) $("lastUpdate").textContent = `Last update: ${msg.timestamp}`;
+    if (msg.devices) applyStatus(msg.devices);   // applyStatus → updateSummary
+    if (msg.timestamp) { const lu = $("lastUpdate"); if (lu) lu.textContent = `Update ${msg.timestamp}`; }
   };
 }
 function setConn(ok) {
@@ -123,6 +138,7 @@ function applyStatus(devices) {
     setLabel(el, p.label || (d && d.name) || p.ip);
   });
   if (selectedIp && deviceByIp[selectedIp]) renderDetail(deviceByIp[selectedIp]);
+  updateSummary();
 }
 
 function makeMarker(p) {
@@ -156,12 +172,24 @@ function mk(tag, attrs) {
   return el;
 }
 
-function updateSummary(devices) {
-  const total = devices.length, up = devices.filter((d) => d.status === "UP").length;
-  $("totalDevices").textContent = total; $("upCount").textContent = up; $("downCount").textContent = total - up;
-  const score = total > 0 ? ((up / total) * 100).toFixed(1) : "100.0";
-  const el = $("healthScore"); el.textContent = `${score}%`;
-  el.style.color = score >= 95 ? "var(--up)" : score >= 80 ? "var(--high)" : "var(--down)";
+// Ringkasan dihitung dari PIN DI LAYOUT (bukan semua device yang dikirim WS).
+function updateSummary() {
+  const total = pins.length;
+  let up = 0, down = 0, unknown = 0;
+  pins.forEach((p) => {
+    const st = deviceByIp[p.ip] ? deviceByIp[p.ip].status : null;
+    if (st === "UP") up++; else if (st === "DOWN") down++; else unknown++;
+  });
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  set("totalDevices", total); set("upCount", up); set("downCount", down);
+  const uc = $("unknownCount");
+  if (uc) { uc.textContent = unknown; const chip = uc.closest(".sp-chip"); if (chip) chip.style.display = unknown ? "" : "none"; }
+  const known = up + down;
+  const score = (total === 0) ? 100 : (known === 0 ? null : Math.round((up / total) * 100));   // null = belum ada data live
+  const el = $("healthScore");
+  if (el) { el.textContent = score === null ? "—" : `${score}%`; el.style.color = score === null ? "var(--text-dim)" : score >= 95 ? "var(--up)" : score >= 60 ? "var(--high)" : "var(--down)"; }
+  const bar = $("healthBar"); if (bar) bar.style.width = `${score === null ? 0 : score}%`;
+  const dot = $("spDot"); if (dot) dot.style.background = down ? "var(--down)" : up ? "var(--up)" : "var(--unknown)";
 }
 
 // ===================================================================
@@ -331,4 +359,4 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDetai
 
 // ===== Start =====
 applyView();
-loadLayout();
+boot();

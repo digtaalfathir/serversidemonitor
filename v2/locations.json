@@ -5,8 +5,8 @@
       "id": "jmp",
       "name": "JMP Warehouse",
       "ws": "ws://10.10.1.223:10011/ws",
-      "scene3d": "/scene.json",
-      "layout2d": "/layout2d.json"
+      "scene3d": "/scenejmp.json",
+      "layout2d": "/layout2djmp.json"
     }
   ]
 }
