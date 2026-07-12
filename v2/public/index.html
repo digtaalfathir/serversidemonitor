@@ -12,11 +12,12 @@
   { "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three/addons/" } }
   </script>
 </head>
-<body>
+<body data-view="3d">
 
   <!-- ===== TOP BAR ===== -->
   <div class="topbar">
     <div class="brand"><span class="pulse"></span>Stechoq <b>Pulse</b></div>
+    <div class="loc-nav" id="locNav"></div>
     <div class="seg">
       <button id="t3d" class="active">3D</button>
       <button id="t2d" title="Tampilan denah 2D">2D</button>
@@ -71,24 +72,7 @@
   <!-- ===== SPLASH ===== -->
   <div class="fm-splash" id="splash"><div class="spinner"></div><div class="msg" id="splashMsg">Memuat scene…</div></div>
 
-  <!-- theme toggle -->
-  <script>
-    (function () {
-      const html = document.documentElement, btn = document.getElementById("themeToggle");
-      function apply(t) {
-        html.setAttribute("data-theme", t);
-        localStorage.setItem("pulse-theme", t);
-        btn.textContent = t === "light" ? "☀️" : "🌙";
-        window.dispatchEvent(new CustomEvent("pulse-theme", { detail: t }));
-      }
-      btn.onclick = () => apply(html.getAttribute("data-theme") === "light" ? "dark" : "light");
-      btn.textContent = html.getAttribute("data-theme") === "light" ? "☀️" : "🌙";
-      // toggle 2D → pindah ke halaman denah 2D (tema & lokasi ikut)
-      const l = new URLSearchParams(location.search).get("loc");
-      const q = l ? "?loc=" + encodeURIComponent(l) : "";
-      document.getElementById("t2d").onclick = () => (location.href = "/floormap.html" + q);
-    })();
-  </script>
+  <script src="/js/pulse-chrome.js"></script>
   <script type="module" src="/js/scene-view.js"></script>
 </body>
 </html>

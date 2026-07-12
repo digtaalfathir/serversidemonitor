@@ -48,6 +48,14 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .icon-btn{width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text);
   font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .icon-btn:hover{background:var(--hover);border-color:var(--accent);transform:translateY(-1px)}
+/* pemilih lokasi (D2) */
+.loc-nav{display:flex;align-items:center}
+.loc-select{appearance:none;-webkit-appearance:none;background:var(--hover);border:1px solid var(--border);border-radius:10px;
+  color:var(--text-bright);font:700 13px Inter,sans-serif;padding:7px 32px 7px 13px;cursor:pointer;transition:all .15s;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b9ab4' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat:no-repeat;background-position:right 11px center}
+.loc-select:hover{border-color:var(--accent);color:var(--text-bright)}
+.loc-select option{background:var(--panel-solid);color:var(--text)}
 
 /* ---------- left stat panel (Cisco-style) ---------- */
 .statpanel{position:fixed;top:72px;left:16px;z-index:15;width:238px;background:var(--panel);backdrop-filter:blur(22px);
