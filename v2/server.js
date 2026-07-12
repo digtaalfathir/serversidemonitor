@@ -114,7 +114,7 @@ wss.on("connection", (client, req) => {
 server.listen(PORT, HOST, () => {
   console.log("========================================");
   console.log("  Stechoq Pulse (v2) — viewer monitoring (konsumen WS eksternal)");
-  console.log(`  App     : http://${HOST || "localhost"}:${PORT}`);
+  console.log(`  App     : http://${HOST || "0.0.0.0"}:${PORT}  ${HOST ? "(hanya " + HOST + ")" : "(semua interface — akses via http://IP:" + PORT + ")"}`);
   LOCATIONS.forEach((l) => console.log(`  Lokasi  : ${l.id}  ←  ${l.ws}`));
   console.log(`  WS proxy: /ws?loc=<id>   (default: ${LOCATIONS[0].id})`);
   console.log("========================================");

@@ -23,8 +23,9 @@ module.exports = {
       max_memory_restart: "300M",
       env: {
         NODE_ENV: "production",
-        V2_PORT: 10102,               // port internal; nginx yang menghadap domain
-        V2_HOST: "127.0.0.1",         // hanya lokal (diakses via nginx). Hapus baris ini utk akses langsung dari LAN
+        V2_PORT: 10102,               // port internal
+        // V2_HOST: "127.0.0.1",      // AKTIFKAN (hapus //) nanti saat sudah di belakang nginx → cuma lokal.
+                                      // Nonaktif (sekarang) = dengar SEMUA interface → bisa diakses via http://IP:10102
         // MONITOR_WS: "ws://10.10.1.223:10011/ws",  // opsional: fallback bila locations.json kosong
         // PULSE_SECRET: "isi-string-acak-panjang",  // opsional: kunci sesi login (default: auto → v2/.pulse-secret)
       },
