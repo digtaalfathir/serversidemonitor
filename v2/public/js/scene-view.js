@@ -42,6 +42,10 @@ const modelCache = {};      // A2: url -> Promise<gltf.scene> (load-once, lalu c
 const STATUS_HEX = { UP: 0x10b981, DOWN: 0xef4444 };
 const UNKNOWN_HEX = 0x6b7280;
 
+// Bidang potong: buang apa pun di bawah PERMUKAAN LANTAI (hanya diterapkan ke material model).
+// constant = -floorTop → sisakan y >= floorTop. Di-set saat scene dimuat (default 1e6 = tak memotong).
+const modelClip = new THREE.Plane(new THREE.Vector3(0, 1, 0), 1e6);
+
 // =====================================================================
 try {
   initThree();
@@ -79,6 +83,7 @@ function initThree() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(w, h);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.localClippingEnabled = true;   // aktifkan clip per-material (motong model nembus lantai)
   // A3: shadow OFF dari awal (flat & ringan) — tanpa toggle.
 
   try {
@@ -214,7 +219,13 @@ function buildFromScene(s) {
   if (s.lighting) applyLighting(s.lighting);
 
   if (s.walls && s.walls.length) built.add(buildWallsMerged(s.walls));   // A2: 1 mesh per warna
-  (s.floors || []).forEach((d) => built.add(buildFloor(d)));
+  let floorTop = null;
+  (s.floors || []).forEach((d) => {
+    built.add(buildFloor(d));
+    const t = 0.03 + (d.order || 0) * 0.006;   // = permukaan atas (samakan dengan buildFloor)
+    if (floorTop === null || t > floorTop) floorTop = t;
+  });
+  modelClip.constant = floorTop === null ? 1e6 : -floorTop;   // ada lantai → potong model di garis lantai
   (s.texts || []).forEach((d) => built.add(makeTextSprite(d)));
   (s.pins || []).forEach((d) => addPinDevice(d));
   (s.models || []).forEach((d) => addModel(d));
@@ -400,6 +411,14 @@ function addModel(d) {
     else root.rotation.set(0, d.rotationY || 0, 0);
     if (Array.isArray(d.scale)) root.scale.set(d.scale[0] || 1, d.scale[1] || 1, d.scale[2] || 1);
     else root.scale.setScalar(d.scale || 1);
+    // potong bagian model yang tertanam/tembus di bawah lantai (rapi dari segala sudut)
+    root.traverse((o) => {
+      if (o.isMesh && o.material) {
+        (Array.isArray(o.material) ? o.material : [o.material]).forEach((mm) => {
+          mm.clippingPlanes = [modelClip]; mm.needsUpdate = true;
+        });
+      }
+    });
     built.add(root);
     if (d.deviceIp) {
       const box = new THREE.Box3().setFromObject(root);
