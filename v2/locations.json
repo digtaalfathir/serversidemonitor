@@ -16,7 +16,8 @@
       "layout2d": "/layout2dsugityf2.json",
       "floors":[
         {"id":"f2","name":"Factory 2","scene3d":"/scenesugityf2.json","layout2d":"/layout2dsugityf2.json"},
-        {"id":"f3","name":"Factory 3","scene3d":"/scene.example.json","layout2d":"/layout2d.example.json"}
+        {"id":"f3","name":"Factory 3","scene3d":"/scenesugityf3.json","layout2d":"/layout2dsugityf3.json"},
+        {"id":"f4","name":"Factory 4","scene3d":"/scene.example.json","layout2d":"/layout2d.example.json"}
       ]
     }
   ]
