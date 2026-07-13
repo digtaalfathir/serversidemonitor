@@ -40,6 +40,9 @@ let zones3d = [];           // E2/E7 — zona = lantai (bounds XZ + mesh utk war
 const ZONE_TINT = false;    // E7 pewarnaan lantai saat DOWN — dimatikan sementara (set true utk aktifkan)
 let glLost = false, renderPaused = false;              // stabilitas GPU (context-lost / tab tersembunyi)
 let modelsPending = 0, sceneReadyFired = false, readyTimer = null;   // #1: splash ditahan sampai model selesai
+let wsRetry = 2000, lastDataAt = 0;   // #2 reconnect backoff+jitter · #3 deteksi data basi
+const STALE_MS = 25000;               // data dianggap "basi" bila tak ada payload selama ini
+let lite = false, frameMs = 0, lastFrame = 0;   // #4 mode ringan (grafis hemat GPU) + cap FPS
 let camAnim = null, savedCam = null, lastT = 0;   // klik→zoom ke titik, tutup→balik
 const modelCache = {};      // A2: url -> Promise<gltf.scene> (load-once, lalu clone)
 
@@ -60,6 +63,7 @@ if (!webglSupported()) {
     `<a href="/floormap.html${l ? "?loc=" + encodeURIComponent(l) : ""}" style="color:var(--accent);text-decoration:underline">Buka tampilan 2D →</a>`;
 } else {
   try {
+    lite = decideLite(); window.__pulseLite = lite; frameMs = lite ? 33 : 0;   // #4 (dikontrol via Settings)
     initThree();
     bindInteraction();
     animate();
@@ -70,6 +74,28 @@ function webglSupported() {
   try { const c = document.createElement("canvas"); return !!(window.WebGLRenderingContext && (c.getContext("webgl2") || c.getContext("webgl"))); }
   catch (e) { return false; }
 }
+// #4 — mode ringan: hormati pilihan user (localStorage), kalau belum diset → auto-deteksi PC lemah
+function decideLite() {
+  const saved = localStorage.getItem("pulse-lite");
+  if (saved === "1") return true;
+  if (saved === "0") return false;
+  return autoLite();
+}
+function autoLite() {
+  try {
+    const c = document.createElement("canvas");
+    const gl = c.getContext("webgl") || c.getContext("webgl2");
+    if (!gl) return true;
+    const ext = gl.getExtension("WEBGL_debug_renderer_info");
+    const r = (ext && gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) || "";
+    gl.getExtension("WEBGL_lose_context")?.loseContext();
+    if (/swiftshader|llvmpipe|software|microsoft basic|mesa/i.test(r)) return true;   // tanpa akselerasi HW
+  } catch (e) {}
+  if ((navigator.deviceMemory || 8) <= 3) return true;
+  if ((navigator.hardwareConcurrency || 8) <= 2) return true;
+  return false;
+}
+// Toggle mode ringan sekarang ada di panel Settings ⚙ (pulse-chrome.js); scene-view cukup ekspos window.__pulseLite.
 
 // Lokasi + lantai aktif (dari locations.json) → menentukan scene + nama panel + WS.
 let activeLoc = null, activeFloor = null;
@@ -108,18 +134,20 @@ function initThree() {
   camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 3000);
   camera.position.set(28, 24, 32);
 
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: !lite, powerPreference: "high-performance" });
+  renderer.setPixelRatio(lite ? 1 : Math.min(window.devicePixelRatio, 2));   // #4: pixelRatio 1 di mode ringan
   renderer.setSize(w, h);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.localClippingEnabled = true;   // aktifkan clip per-material (motong model nembus lantai)
   // A3: shadow OFF dari awal (flat & ringan) — tanpa toggle.
 
-  try {
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    pmrem.dispose();
-  } catch (e) { console.warn("env map dilewati:", e); }
+  if (!lite) {   // #4: env-map (refleksi) mahal → dilewati di mode ringan
+    try {
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      pmrem.dispose();
+    } catch (e) { console.warn("env map dilewati:", e); }
+  }
 
   labelRenderer = new CSS2DRenderer();
   labelRenderer.setSize(w, h);
@@ -165,9 +193,11 @@ function onContextLost() {
 function markModelDone() { if (modelsPending > 0) modelsPending--; if (modelsPending <= 0) fireSceneReady(); }
 function fireSceneReady() { if (sceneReadyFired) return; sceneReadyFired = true; clearTimeout(readyTimer); hideSplash(); }
 
-function animate() {
+function animate(now) {
   requestAnimationFrame(animate);
   if (glLost || renderPaused) return;   // jangan render saat context hilang / tab tersembunyi
+  if (frameMs && now && now - lastFrame < frameMs) return;   // #4: batasi FPS di mode ringan
+  lastFrame = now || 0;
   const t = clock ? clock.getElapsedTime() : 0;
   const dt = Math.min(0.1, t - lastT); lastT = t;
   for (const ip in deviceObjs) {
@@ -412,20 +442,20 @@ function makeTextSprite(d) {
 // =====================================================================
 function makeBeacon(ballY, withStem) {
   const g = new THREE.Group();
-  const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.72, 36),
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.72, lite ? 20 : 36),   // #4 segmen lebih rendah di mode ringan
     new THREE.MeshBasicMaterial({ color: UNKNOWN_HEX, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.05;
   let stem = null;
   if (withStem) {
     const hgt = Math.max(0.4, ballY - 0.1);
-    stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, hgt, 10),
+    stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, hgt, lite ? 6 : 10),
       new THREE.MeshStandardMaterial({ color: UNKNOWN_HEX, emissive: UNKNOWN_HEX, emissiveIntensity: 0.3 }));
     stem.position.y = hgt / 2; stem.castShadow = true;
   }
-  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.34, 22, 22),
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.34, lite ? 12 : 22, lite ? 12 : 22),
     new THREE.MeshStandardMaterial({ color: UNKNOWN_HEX, emissive: UNKNOWN_HEX, emissiveIntensity: 0.7, roughness: 0.4 }));
   ball.position.y = ballY; ball.castShadow = true;
-  const halo = new THREE.Mesh(new THREE.SphereGeometry(0.34, 18, 18),
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(0.34, lite ? 10 : 18, lite ? 10 : 18),
     new THREE.MeshBasicMaterial({ color: UNKNOWN_HEX, transparent: true, opacity: 0.12, depthWrite: false }));
   halo.position.y = ballY;
   g.add(ring, ball, halo); if (stem) g.add(stem);
@@ -771,21 +801,35 @@ function connectWS() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
   const loc = (activeLoc && activeLoc.id) || new URLSearchParams(location.search).get("loc");   // lokasi aktif
   const ws = new WebSocket(`${proto}://${location.host}/ws${loc ? "?loc=" + encodeURIComponent(loc) : ""}`);
-  ws.onopen = () => setConn(true);
-  ws.onclose = () => { setConn(false); setTimeout(connectWS, 3000); };
+  ws.onopen = () => { wsRetry = 2000; setConn(true); };                                 // #2: reset backoff saat sukses
+  ws.onclose = () => { setConn(false); setTimeout(connectWS, wsRetry + Math.random() * 1000); wsRetry = Math.min(30000, wsRetry * 1.7); };
   ws.onerror = () => ws.close();
   ws.onmessage = (e) => {
     let m; try { m = JSON.parse(e.data); } catch { return; }
     if (m.type === "cmd_result") return;
     if (m.type === "pulse_status") { setConn(m.up, m.up ? "Connected" : "Sumber offline"); return; }   // status sumber (upstream)
-    if (m.devices) { m.devices.forEach((d) => (deviceByIp[d.ip] = d)); applyStatus(m.devices); }   // applyStatus → updateSummary
+    if (m.devices) {
+      m.devices.forEach((d) => (deviceByIp[d.ip] = d)); applyStatus(m.devices);   // applyStatus → updateSummary
+      lastDataAt = Date.now(); if ($("connDot").classList.contains("stale")) setConn(true);   // #3: data segar lagi
+    }
     if (m.timestamp) $("lastUpdate").textContent = `Update ${m.timestamp}`;
   };
 }
 function setConn(ok, label) {
+  $("connDot").classList.remove("stale");   // #3
   $("connDot").classList.toggle("connected", ok);
   $("connLabel").textContent = label || (ok ? "Connected" : "Disconnected");
 }
+// #3 — tandai "Data basi" bila tersambung tapi tak ada payload > STALE_MS
+function staleCheck() {
+  const dot = $("connDot"), lbl = $("connLabel"); if (!dot || !lbl) return;
+  if (!dot.classList.contains("connected") && !dot.classList.contains("stale")) return;   // hanya saat dianggap tersambung
+  if (lastDataAt && Date.now() - lastDataAt > STALE_MS) {
+    dot.classList.remove("connected"); dot.classList.add("stale");
+    lbl.textContent = `Data basi (${Math.floor((Date.now() - lastDataAt) / 1000)}s)`;
+  }
+}
+setInterval(staleCheck, 5000);
 
 // ---- util ----
 function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }

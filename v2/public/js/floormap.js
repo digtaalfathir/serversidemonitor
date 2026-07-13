@@ -16,6 +16,8 @@ const lastStatus = {};      // ip -> status sebelumnya (deteksi transisi utk ale
 let selectedIp = null, dtTimer = null, filterMode = "all", alertBaseline = false;
 let zones2d = [], roomEls = [];   // E2/E7 — zona = ruangan (rect utk warna)
 const ZONE_TINT = false;          // E7 pewarnaan ruangan saat DOWN — dimatikan sementara (set true utk aktifkan)
+let wsRetry = 2000, lastDataAt = 0;   // #2 reconnect backoff+jitter · #3 data basi
+const STALE_MS = 25000;
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("floormap");
@@ -118,21 +120,32 @@ function connect() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
   const loc = (activeLoc && activeLoc.id) || new URLSearchParams(location.search).get("loc");
   ws = new WebSocket(`${proto}://${location.host}/ws${loc ? "?loc=" + encodeURIComponent(loc) : ""}`);
-  ws.onopen = () => setConn(true);
-  ws.onclose = () => { setConn(false); setTimeout(connect, 3000); };
+  ws.onopen = () => { wsRetry = 2000; setConn(true); };                                 // #2
+  ws.onclose = () => { setConn(false); setTimeout(connect, wsRetry + Math.random() * 1000); wsRetry = Math.min(30000, wsRetry * 1.7); };
   ws.onerror = () => ws.close();
   ws.onmessage = (e) => {
     let msg; try { msg = JSON.parse(e.data); } catch { return; }
     if (msg.type === "cmd_result") return;
     if (msg.type === "pulse_status") { setConn(msg.up, msg.up ? "Connected" : "Sumber offline"); return; }
-    if (msg.devices) applyStatus(msg.devices);   // applyStatus → updateSummary
+    if (msg.devices) { applyStatus(msg.devices); lastDataAt = Date.now(); if ($("connDot").classList.contains("stale")) setConn(true); }   // #3
     if (msg.timestamp) { const lu = $("lastUpdate"); if (lu) lu.textContent = `Update ${msg.timestamp}`; }
   };
 }
 function setConn(ok, label) {
+  $("connDot").classList.remove("stale");   // #3
   $("connDot").classList.toggle("connected", ok);
   $("connLabel").textContent = label || (ok ? "Connected" : "Disconnected");
 }
+// #3 — tandai "Data basi" bila tersambung tapi tak ada payload > STALE_MS
+function staleCheck() {
+  const dot = $("connDot"), lbl = $("connLabel"); if (!dot || !lbl) return;
+  if (!dot.classList.contains("connected") && !dot.classList.contains("stale")) return;
+  if (lastDataAt && Date.now() - lastDataAt > STALE_MS) {
+    dot.classList.remove("connected"); dot.classList.add("stale");
+    lbl.textContent = `Data basi (${Math.floor((Date.now() - lastDataAt) / 1000)}s)`;
+  }
+}
+setInterval(staleCheck, 5000);
 // recolour each pin-marker by its matching device's live status (grey if unmapped)
 function applyStatus(devices) {
   devices.forEach((d) => (deviceByIp[d.ip] = d));

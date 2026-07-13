@@ -42,9 +42,13 @@ const publicDir = path.join(ROOT_DIR, config.publicDir || "public");
 const auth = require("./auth");
 app.get("/login", (_req, res) => res.sendFile(path.join(publicDir, "login.html")));
 app.post("/api/login", (req, res) => {
+  const ip = req.ip || req.socket.remoteAddress || "?";
+  const st = auth.loginStatus(ip);
+  if (st.blocked) return res.status(429).json({ error: `Terlalu banyak percobaan gagal. Coba lagi ${st.retryAfter} detik lagi.` });
   const { username, password } = req.body || {};
   const user = auth.loadUsers().find((u) => u.username === username);
-  if (!user || !auth.verifyPassword(password || "", user)) return res.status(401).json({ error: "Username atau password salah." });
+  if (!user || !auth.verifyPassword(password || "", user)) { auth.loginFail(ip); return res.status(401).json({ error: "Username atau password salah." }); }
+  auth.loginOK(ip);
   const secure = req.secure ? "; Secure" : "";
   res.setHeader("Set-Cookie", `${auth.COOKIE}=${auth.makeToken(username)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${auth.MAXAGE}${secure}`);
   res.json({ ok: true });

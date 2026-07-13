@@ -48,9 +48,29 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .conn-dot{width:8px;height:8px;border-radius:50%;background:var(--down);transition:background .3s}
 .conn-dot.connected{background:var(--up);box-shadow:0 0 8px var(--up)}
 #connLabel{display:inline-block;min-width:98px}   /* stabil: teks Connected/Disconnected/Sumber offline tak menggeser layout */
+.conn-dot.stale{background:var(--high);box-shadow:0 0 8px var(--high)}   /* #3 data basi */
 .icon-btn{width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text);
   font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .icon-btn:hover{background:var(--hover);border-color:var(--accent);transform:translateY(-1px)}
+.icon-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}   /* toggle aktif / panel Settings terbuka */
+
+/* #5 panel Settings (dropdown dari ⚙) */
+.settings-panel{position:fixed;z-index:60;min-width:240px;background:var(--panel-solid);border:1px solid var(--border);
+  border-radius:14px;box-shadow:var(--shadow);padding:8px;opacity:0;transform:translateY(-6px);pointer-events:none;
+  transition:opacity .16s,transform .16s}
+.settings-panel.open{opacity:1;transform:translateY(0);pointer-events:auto}
+.settings-panel .set-title{font:800 12px Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);padding:6px 8px 8px}
+.settings-panel .set-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 8px;border-radius:9px}
+.settings-panel .set-row:hover{background:var(--hover)}
+.settings-panel .set-row>span{display:flex;flex-direction:column;font:600 13px Inter,sans-serif;color:var(--text)}
+.settings-panel .set-row>span small{font:500 11px Inter,sans-serif;color:var(--text-dim);margin-top:2px}
+.settings-panel .seg.mini button{padding:5px 12px;font-size:12px}
+.switch{position:relative;width:42px;height:24px;border-radius:999px;border:1px solid var(--border);background:var(--hover);
+  cursor:pointer;flex-shrink:0;padding:0;transition:background .18s,border-color .18s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--text-dim);transition:transform .18s,background .18s}
+.switch.on{background:var(--accent);border-color:var(--accent)}
+.switch.on::after{transform:translateX(18px);background:#fff}
+
 /* pemilih lokasi (D2) */
 .loc-nav{display:flex;align-items:center}
 .loc-select{appearance:none;-webkit-appearance:none;background:var(--hover);border:1px solid var(--border);border-radius:10px;

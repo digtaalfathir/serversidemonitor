@@ -26,17 +26,12 @@
   if (wantView === "2d" && CURRENT_VIEW === "3d") { location.replace(buildURL(locParam, "2d", floorParam)); return; }
   if (wantView === "3d" && CURRENT_VIEW === "2d") { location.replace(buildURL(locParam, "3d", floorParam)); return; }
 
-  // ---- tema ----
-  const themeBtn = document.getElementById("themeToggle");
+  // ---- tema (dikontrol via panel Settings ⚙, lihat blok di bawah) ----
   function applyTheme(t) {
     html.setAttribute("data-theme", t);
     localStorage.setItem("pulse-theme", t);
-    if (themeBtn) themeBtn.textContent = t === "light" ? "☀️" : "🌙";
     window.dispatchEvent(new CustomEvent("pulse-theme", { detail: t }));   // scene-view.js dengarkan (kanvas 3D)
-  }
-  if (themeBtn) {
-    themeBtn.onclick = () => applyTheme(html.getAttribute("data-theme") === "light" ? "dark" : "light");
-    themeBtn.textContent = html.getAttribute("data-theme") === "light" ? "☀️" : "🌙";
+    window.__pulseSyncSettings && window.__pulseSyncSettings();
   }
 
   // ---- toggle 2D / 3D (pindah viewer, bawa lokasi + view) ----
@@ -141,13 +136,12 @@
   document.body.appendChild(toastWrap);
 
   let audioCtx = null, soundOn = localStorage.getItem("pulse-sound") === "1";
-  const soundBtn = document.getElementById("soundToggle");
   function setSound(on) {
     soundOn = on; localStorage.setItem("pulse-sound", on ? "1" : "0");
-    if (soundBtn) { soundBtn.textContent = on ? "🔔" : "🔕"; soundBtn.title = on ? "Suara alert: ON" : "Suara alert: OFF"; }
     if (on && !audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }   // dibuka saat gesture klik → tak diblokir
+    window.__pulseSyncSettings && window.__pulseSyncSettings();
   }
-  if (soundBtn) { soundBtn.onclick = () => setSound(!soundOn); setSound(soundOn); }
+  setSound(soundOn);
   function beep() {
     if (!soundOn || !audioCtx) return;
     try {
@@ -194,4 +188,65 @@
     try { await fetch("/api/logout", { method: "POST" }); } catch (e) {}
     location.href = "/login";
   };
+
+  // ---- #5: Panel Settings — kumpulkan Tema + Suara + Mode ringan dalam satu ⚙ ----
+  const settingsBtn = document.getElementById("settingsBtn");
+  if (settingsBtn) {
+    const is3d = CURRENT_VIEW === "3d";   // "Mode ringan" hanya relevan untuk kanvas 3D
+    const panel = document.createElement("div");
+    panel.className = "settings-panel";
+    panel.innerHTML =
+      `<div class="set-title">Pengaturan</div>` +
+      `<div class="set-row"><span>Tema</span>` +
+        `<div class="seg mini" id="setTheme"><button data-th="light">Terang</button><button data-th="dark">Gelap</button></div></div>` +
+      `<div class="set-row"><span>Suara alert<small>bunyi saat device down</small></span>` +
+        `<button class="switch" id="setSoundSw" role="switch" aria-label="Suara alert"></button></div>` +
+      (is3d
+        ? `<div class="set-row"><span>Mode ringan<small>grafis hemat GPU · muat ulang</small></span>` +
+            `<button class="switch" id="setLiteSw" role="switch" aria-label="Mode ringan"></button></div>`
+        : ``);
+    document.body.appendChild(panel);
+
+    const thSeg = panel.querySelector("#setTheme");
+    const soundSw = panel.querySelector("#setSoundSw");
+    const liteSw = panel.querySelector("#setLiteSw");
+    const liteState = () =>
+      window.__pulseLite !== undefined ? !!window.__pulseLite : localStorage.getItem("pulse-lite") === "1";
+
+    function syncSettings() {
+      const th = html.getAttribute("data-theme") === "light" ? "light" : "dark";
+      thSeg.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.th === th));
+      soundSw.classList.toggle("on", soundOn);
+      if (liteSw) liteSw.classList.toggle("on", liteState());
+    }
+    window.__pulseSyncSettings = syncSettings;   // dipanggil applyTheme/setSound agar switch ikut update
+
+    thSeg.querySelectorAll("button").forEach((b) => (b.onclick = () => applyTheme(b.dataset.th)));
+    soundSw.onclick = () => setSound(!soundOn);
+    if (liteSw) liteSw.onclick = () => {                       // perlu reload: antialias/pixelRatio ditentukan saat renderer dibuat
+      localStorage.setItem("pulse-lite", liteState() ? "0" : "1");
+      location.reload();
+    };
+
+    function place() {
+      const r = settingsBtn.getBoundingClientRect();
+      panel.style.top = r.bottom + 8 + "px";
+      panel.style.right = Math.max(8, window.innerWidth - r.right) + "px";
+    }
+    settingsBtn.onclick = (e) => {
+      e.stopPropagation();
+      const open = panel.classList.toggle("open");
+      settingsBtn.classList.toggle("active", open);
+      if (open) { place(); syncSettings(); }
+    };
+    document.addEventListener("click", (e) => {
+      if (panel.classList.contains("open") && !panel.contains(e.target) && e.target !== settingsBtn) {
+        panel.classList.remove("open"); settingsBtn.classList.remove("active");
+      }
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { panel.classList.remove("open"); settingsBtn.classList.remove("active"); }
+    });
+    syncSettings();
+  }
 })();

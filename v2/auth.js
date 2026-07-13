@@ -75,4 +75,22 @@ function middleware(req, res, next) {
   return res.status(401).json({ error: "unauthorized" });
 }
 
-module.exports = { COOKIE, MAXAGE, USERS_FILE, loadUsers, hashPassword, verifyPassword, makeToken, userFromReq, middleware };
+// ---- rate-limit login (anti brute-force, in-memory per IP) ----
+const _attempts = new Map();
+const RL_MAX = 5, RL_BLOCK_MS = 60 * 1000, RL_WINDOW_MS = 10 * 60 * 1000;
+function loginStatus(ip) {   // panggil SEBELUM verifikasi
+  const a = _attempts.get(ip);
+  if (a && a.blockUntil > Date.now()) return { blocked: true, retryAfter: Math.ceil((a.blockUntil - Date.now()) / 1000) };
+  return { blocked: false, retryAfter: 0 };
+}
+function loginFail(ip) {      // panggil saat login GAGAL
+  const now = Date.now();
+  let a = _attempts.get(ip);
+  if (!a || now - a.first > RL_WINDOW_MS) a = { fails: 0, first: now, blockUntil: 0 };
+  a.fails++;
+  if (a.fails >= RL_MAX) { a.blockUntil = now + RL_BLOCK_MS; a.fails = 0; a.first = now; }
+  _attempts.set(ip, a);
+}
+function loginOK(ip) { _attempts.delete(ip); }   // panggil saat login SUKSES
+
+module.exports = { COOKIE, MAXAGE, USERS_FILE, loadUsers, hashPassword, verifyPassword, makeToken, userFromReq, middleware, loginStatus, loginFail, loginOK };

@@ -9,6 +9,7 @@ const WS_URL = `${protocol}://${location.host}/ws`;
 
 let ws, devicesData = [], downtimeTimers = {};
 let editingDevice = null;
+let wsRetry = 2000;   // #2 reconnect backoff+jitter
 
 // ===== Filter State =====
 let filterStatus = 'ALL';
@@ -51,8 +52,8 @@ function getFilteredDevices() {
 // ===== WebSocket =====
 function connect() {
   ws = new WebSocket(WS_URL);
-  ws.onopen = () => { setConn(true); };
-  ws.onclose = () => { setConn(false); setTimeout(connect, 3000); };
+  ws.onopen = () => { wsRetry = 2000; setConn(true); };
+  ws.onclose = () => { setConn(false); setTimeout(connect, wsRetry + Math.random() * 1000); wsRetry = Math.min(30000, wsRetry * 1.7); };
   ws.onerror = () => ws.close();
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
