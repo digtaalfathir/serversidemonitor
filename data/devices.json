@@ -1,4 +1,290 @@
 [
-  { "name": "Gate Inbound", "ip": "10.10.1.180", "severity": "MEDIUM", "owner": "", "location": "", "vendor": "", "notes": "" },
-  { "name": "Gate Outbound", "ip": "10.10.1.210", "severity": "MEDIUM", "owner": "", "location": "", "vendor": "", "notes": "" }
+  {
+    "name": "IOT NODE 001",
+    "ip": "172.19.88.17",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F2",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "Printer M#5",
+    "ip": "172.19.88.21",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F2",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS MATERIAL INPUT F4",
+    "ip": "172.19.88.5",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F4",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION RESIN1 F4",
+    "ip": "172.19.88.8",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F4",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION RESIN2 F4",
+    "ip": "172.19.88.9",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F4",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION RESIN3 F4",
+    "ip": "172.19.88.10",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F4",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "PLC INJECTION F4",
+    "ip": "172.19.88.11",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F4",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS MIXING MATERIAL F4",
+    "ip": "172.19.88.30",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F4",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS PLAYMAKER F4",
+    "ip": "172.19.88.16",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F4",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS QI F4",
+    "ip": "172.19.88.19",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F4",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS REPAIR IN LINE F4",
+    "ip": "172.19.88.20",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F4",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS REPAIR OUT LINE F4",
+    "ip": "172.19.88.99",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F4",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS POLES F4",
+    "ip": "172.19.88.29",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F4",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS TASK FORCE F4",
+    "ip": "172.19.88.24",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F4",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION 1300T F3",
+    "ip": "172.19.88.95",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F3",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION1 1600T F3",
+    "ip": "172.19.88.137",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F3",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION1 2500T F3",
+    "ip": "172.19.88.138",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F3",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION2 2500T F3",
+    "ip": "172.19.88.130",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F3",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION3 2500T F3",
+    "ip": "172.19.88.134",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F3",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION2 1600T F3",
+    "ip": "172.19.88.113",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung - F3",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION1 KRW",
+    "ip": "172.19.95.16",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Karawang",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION2 KRW",
+    "ip": "172.19.95.20",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Karawang",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION3 KRW",
+    "ip": "172.19.95.17",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Karawang",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION4 KRW",
+    "ip": "172.19.95.18",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Karawang",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS INJECTION5 KRW",
+    "ip": "172.19.95.19",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Karawang",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS MATERIAL1 KRW",
+    "ip": "172.19.95.14",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Karawang",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "DCS MATERIAL2 KRW",
+    "ip": "172.19.95.15",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Karawang",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "PC SERVER KAMERA",
+    "ip": "172.19.95.52",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Karawang",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "Camera QI KRW",
+    "ip": "172.19.95.21",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Karawang",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "CAMERA AO KRW",
+    "ip": "172.19.95.34",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Karawang",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "SERVER SUGITY",
+    "ip": "192.168.10.49",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Cibitung",
+    "vendor": "",
+    "notes": ""
+  },
+  {
+    "name": "SERVER CAMERA KRW",
+    "ip": "172.19.95.52",
+    "severity": "HIGH",
+    "owner": "",
+    "location": "Karawang",
+    "vendor": "",
+    "notes": ""
+  }
 ]
