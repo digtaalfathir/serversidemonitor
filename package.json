@@ -21,6 +21,7 @@
   "dependencies": {
     "express": "^4.21.0",
     "ping": "^0.4.4",
+    "ssh2": "^1.17.0",
     "ws": "^8.18.0"
   },
   "engines": {

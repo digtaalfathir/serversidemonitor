@@ -11,14 +11,14 @@
     {
       "id": "sugity",
       "name": "Sugity Creatives",
-      "ws": "ws://localhost:10011/ws",
-      "scene3d": "/assets/sugity/scenesugityf2.json",
-      "layout2d": "/assets/sugity/layout2dsugityf2.json",
+      "ws": "ws://10.10.1.210:10011/ws",
+      "scene3d": "/assets/Sugity/scenesugityf2.json",
+      "layout2d": "/assets/Sugity/layout2dsugityf2.json",
       "floors":[
-        {"id":"f2","name":"Factory 2","scene3d":"/assets/sugity/scenesugityf2.json","layout2d":"/assets/sugity/layout2dsugityf2.json"},
-        {"id":"f3","name":"Factory 3","scene3d":"/assets/sugity/scenesugityf3.json","layout2d":"/assets/sugity/layout2dsugityf3.json"},
-        {"id":"f41","name":"Factory 4 Floor 1","scene3d":"/assets/sugity/scenesugityf4.json","layout2d":"/assets/sugity/layout2dsugityf4.json"},
-        {"id":"f42","name":"Factory 4 Floor 2","scene3d":"/scene.example.json","layout2d":"/layout2d.example.json"}
+        {"id":"f2","name":"Factory 2","scene3d":"/assets/Sugity/scenesugityf2.json","layout2d":"/assets/Sugity/layout2dsugityf2.json"},
+        {"id":"f3","name":"Factory 3","scene3d":"/assets/Sugity/scenesugityf3.json","layout2d":"/assets/Sugity/layout2dsugityf3.json"},
+        {"id":"f41","name":"Factory 4 Floor 1","scene3d":"/assets/Sugity/scenesugityf4.json","layout2d":"/assets/Sugity/layout2dsugityf4.json"},
+        {"id":"f42","name":"Factory 4 Floor 2","scene3d":"/assets/Sugity/scene.example.json","layout2d":"/assets/Sugity/layout2d.example.json"}
       ]
     }
   ]

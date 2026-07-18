@@ -1,0 +1,25 @@
+{
+  "_help": "Salin ke remotes.json lalu isi. KEY tiap device = IP di MONITORING (pin.ip). ssh.host = IP SSH SEBENARNYA (boleh beda). Device tanpa blok ssh & vnc = TIDAK bisa diremote. Kredensial: default env (REMOTE_SSH_PASSWORD / REMOTE_SSH_KEY_FILE); per-device override keyFile (path) / passwordEnv (NAMA env), BUKAN password mentah. vnc.startCommand (opsional) = perintah dijalankan via SSH SEBELUM konek VNC (mis. x11vnc); TANPA -bg agar x11vnc otomatis mati saat sesi ditutup.",
+  "defaults": {
+    "ssh": { "port": 22, "username": "admin" }
+  },
+  "devices": {
+    "10.10.1.50": {
+      "label": "Server Rak A — SSH + VNC (auto-start x11vnc)",
+      "ssh": { "host": "192.168.9.50", "username": "root" },
+      "vnc": {
+        "host": "192.168.9.50", "port": 5900,
+        "startCommand": "x11vnc -display :0 -rfbport 5900 -localhost -nopw -forever",
+        "startDelayMs": 2000
+      }
+    },
+    "10.10.1.51": {
+      "label": "Switch — SSH saja (pakai key sendiri)",
+      "ssh": { "host": "192.168.9.51", "keyFile": "/path/ke/switch_key" }
+    },
+    "10.10.1.52": {
+      "label": "PC Ops — SSH saja (password dari env sendiri)",
+      "ssh": { "host": "192.168.9.52", "username": "ops", "passwordEnv": "SSH_PASS_OPS" }
+    }
+  }
+}

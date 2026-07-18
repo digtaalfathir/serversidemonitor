@@ -71,6 +71,38 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .switch.on{background:var(--accent);border-color:var(--accent)}
 .switch.on::after{transform:translateX(18px);background:#fff}
 
+/* Fase 2 — panel terminal SSH multi-sesi + tombol remote di panel detail */
+.ssh-panel{position:fixed;right:16px;bottom:16px;z-index:80;width:min(720px,92vw);height:min(440px,72vh);
+  background:#0a0d16;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);
+  display:none;flex-direction:column;overflow:hidden}
+.ssh-panel.open{display:flex}
+.ssh-head{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#0e1420;border-bottom:1px solid rgba(255,255,255,.08);color:#e6ecf6;font:600 13px Inter,sans-serif}
+.ssh-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);flex-shrink:0}
+.ssh-title{font-weight:800;letter-spacing:.02em;flex-shrink:0}
+.ssh-tabs{display:flex;gap:4px;overflow-x:auto;flex:1;margin:0 4px;scrollbar-width:thin}
+.ssh-tab{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.05);
+  color:#c7d2e6;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;max-width:180px;flex-shrink:0}
+.ssh-tab.active{background:var(--accent-soft);color:var(--accent-2);box-shadow:inset 0 0 0 1px var(--accent)}
+.ssh-tab .ssh-tab-name{overflow:hidden;text-overflow:ellipsis;max-width:130px}
+.ssh-tab-kind{font-size:10px;font-weight:800;opacity:.75;flex-shrink:0}
+.ssh-tab::before{content:"";width:7px;height:7px;border-radius:50%;background:#64748b;flex-shrink:0}
+.ssh-tab.wait::before{background:var(--high)}
+.ssh-tab.ok::before{background:var(--up)}
+.ssh-tab.err::before{background:var(--down)}
+.ssh-tab-x{opacity:.55;font-size:11px}
+.ssh-tab-x:hover{opacity:1;color:var(--down)}
+.ssh-btn{background:transparent;border:1px solid rgba(255,255,255,.14);color:#e6ecf6;border-radius:8px;width:28px;height:28px;cursor:pointer;line-height:1;flex-shrink:0}
+.ssh-btn:hover{background:rgba(255,255,255,.08)}
+.ssh-body{flex:1;min-height:0;position:relative;padding:6px 4px 4px 8px;background:#0a0d16}
+.ssh-wrap{position:absolute;inset:6px 4px 4px 8px}
+.ssh-wrap .xterm,.ssh-wrap .xterm .xterm-viewport{height:100%}
+.dt-actions{display:flex;gap:8px;margin:0 0 12px}
+.dt-ssh{flex:1;padding:9px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);
+  border-radius:9px;font:700 13px Inter,sans-serif;cursor:pointer;transition:all .15s}
+.dt-ssh:hover{background:var(--accent);color:#fff}
+.dt-ssh.vnc{border-color:#8b5cf6;background:rgba(139,92,246,.14);color:#a78bfa}
+.dt-ssh.vnc:hover{background:#8b5cf6;color:#fff}
+
 /* pemilih lokasi (D2) */
 .loc-nav{display:flex;align-items:center}
 .loc-select{appearance:none;-webkit-appearance:none;background:var(--hover);border:1px solid var(--border);border-radius:10px;

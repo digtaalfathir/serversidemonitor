@@ -19,6 +19,12 @@ twinscape/logs/
 twinscape/users.json
 twinscape/.pulse-secret
 
+# Twinscape — env lokal (kredensial remote SSH dsb). Template = twinscape/.env.example
+twinscape/.env
+
+# Twinscape — peta remote per-device (host/username internal). Template = twinscape/remotes.example.json
+twinscape/remotes.json
+
 # v1 classic — akun & rahasia sesi (JANGAN di-commit)
 legacy/data/users.json
 legacy/data/.dashboard-secret

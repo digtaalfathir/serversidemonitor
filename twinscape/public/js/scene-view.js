@@ -787,6 +787,7 @@ function renderDetail(d) {
   const avail = d.uptimeToday ?? 100;
   const trend = (d.history || []).slice(-24);            // E9: kronologis kiri→kanan
   const hist = (d.history || []).slice(-6).reverse();
+  const rcaps = window.remoteCaps ? window.remoteCaps(d.ip) : { ssh: false, vnc: false };   // Fase 2: kapabilitas remote device ini
   detailContent.innerHTML = `
     <div class="dt-head">
       <div><h2>${esc(d.name)}</h2><div class="dt-ip">${d.ip} · <span class="badge sev-${sev}">${sevIcon(sev)} ${sev}</span></div></div>
@@ -796,6 +797,10 @@ function renderDetail(d) {
       <div class="dt-status-banner ${isDown ? "down" : hasData ? "up" : ""}"${hasData ? "" : ' style="background:var(--hover);color:var(--text-dim);border:1px solid var(--border)"'}><span>●</span><span>${isDown ? "DEVICE DOWN" : hasData ? "DEVICE UP" : "TIDAK ADA DATA LIVE"}</span>
         ${isDown && d.downSince ? `<span style="margin-left:auto;font-size:12px;font-weight:600" id="dtLive">—</span>` : ""}</div>
       ${hasData ? "" : `<div class="dt-empty" style="margin:0 0 12px">Device IP ini belum melapor dari WS lokasi ini.</div>`}
+      ${(rcaps.ssh || rcaps.vnc) ? `<div class="dt-actions">
+        ${rcaps.ssh ? `<button class="dt-ssh" id="dtSSH">▸ Open SSH</button>` : ``}
+        ${rcaps.vnc ? `<button class="dt-ssh vnc" id="dtVNC">🖥 Open VNC</button>` : ``}
+      </div>` : ``}
       <div class="dt-section">Status Trend</div>
       <div class="mini-trend">${trend.length ? trend.map((h) => `<i class="${h.status === "UP" ? "up" : "down"}"></i>`).join("") : `<span class="empty">Belum ada data.</span>`}</div>
       <div class="dt-section">Network Quality</div>
@@ -820,6 +825,8 @@ function renderDetail(d) {
       : `<div class="dt-empty">Belum ada event.</div>`}</div>
     </div>`;
   $("dtClose").onclick = closeDetail;
+  { const b = $("dtSSH"); if (b) b.onclick = () => window.openSSH && window.openSSH(d.ip, d.name); }
+  { const v = $("dtVNC"); if (v) v.onclick = () => window.openVNC && window.openVNC(d.ip, d.name); }
   startDtLive(d);
 }
 function startDtLive(d) {
