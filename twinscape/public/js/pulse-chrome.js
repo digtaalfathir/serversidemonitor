@@ -175,77 +175,73 @@
     requestAnimationFrame(() => el.classList.add("show"));
     setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 320); }, 3500);
   }
-  const shareBtn = document.getElementById("shareBtn");
-  if (shareBtn) shareBtn.onclick = async () => {
-    const url = location.origin + buildURL(activeLocId, CURRENT_VIEW, activeFloorId);
-    try { await navigator.clipboard.writeText(url); chromeToast("Link monitor disalin ✓"); }
-    catch (e) { chromeToast(url); }
-  };
-
-  // ---- #3: Keluar (hapus sesi) ----
-  const logoutBtn = document.getElementById("logoutBtn");
-  if (logoutBtn) logoutBtn.onclick = async () => {
-    try { await fetch("/api/logout", { method: "POST" }); } catch (e) {}
-    location.href = "/login";
-  };
-
-  // ---- #5: Panel Settings — kumpulkan Tema + Suara + Mode ringan dalam satu ⚙ ----
-  const settingsBtn = document.getElementById("settingsBtn");
-  if (settingsBtn) {
+  // ---- Menu (hamburger ☰): Tema + Suara + Mode ringan + Keluar dalam satu — biar header tak ramai ----
+  const menuBtn = document.getElementById("menuBtn");
+  if (menuBtn) {
     const is3d = CURRENT_VIEW === "3d";   // "Mode ringan" hanya relevan untuk kanvas 3D
     const panel = document.createElement("div");
     panel.className = "settings-panel";
     panel.innerHTML =
-      `<div class="set-title">Pengaturan</div>` +
-      `<div class="set-row"><span>Tema</span>` +
-        `<div class="seg mini" id="setTheme"><button data-th="light">Terang</button><button data-th="dark">Gelap</button></div></div>` +
-      `<div class="set-row"><span>Suara alert<small>bunyi saat device down</small></span>` +
-        `<button class="switch" id="setSoundSw" role="switch" aria-label="Suara alert"></button></div>` +
+      `<div class="set-title">${t("settings")}</div>` +
+      `<div class="set-row"><span>${t("language")}</span>` +
+        `<div class="seg mini" id="setLang"><button data-lang="en">EN</button><button data-lang="id">ID</button></div></div>` +
+      `<div class="set-row"><span>${t("theme")}</span>` +
+        `<div class="seg mini" id="setTheme"><button data-th="light">${t("light")}</button><button data-th="dark">${t("dark")}</button></div></div>` +
+      `<div class="set-row"><span>${t("sound")}<small>${t("sound_sub")}</small></span>` +
+        `<button class="switch" id="setSoundSw" role="switch" aria-label="${t("sound")}"></button></div>` +
       (is3d
-        ? `<div class="set-row"><span>Mode ringan<small>grafis hemat GPU · muat ulang</small></span>` +
-            `<button class="switch" id="setLiteSw" role="switch" aria-label="Mode ringan"></button></div>`
-        : ``);
+        ? `<div class="set-row set-col"><span>${t("graphics")}<small>${t("graphics_sub")}</small></span>` +
+            `<div class="seg mini set-gfx" id="setGfx"><button data-gfx="auto">${t("gfx_auto")}</button><button data-gfx="high">${t("gfx_high")}</button><button data-gfx="lite">${t("gfx_lite")}</button></div></div>`
+        : ``) +
+      `<div class="set-sep"></div>` +
+      `<button class="set-logout" id="setLogout">${t("logout")}</button>`;
     document.body.appendChild(panel);
 
+    const langSeg = panel.querySelector("#setLang");
     const thSeg = panel.querySelector("#setTheme");
     const soundSw = panel.querySelector("#setSoundSw");
-    const liteSw = panel.querySelector("#setLiteSw");
-    const liteState = () =>
-      window.__pulseLite !== undefined ? !!window.__pulseLite : localStorage.getItem("pulse-lite") === "1";
+    const gfxSeg = panel.querySelector("#setGfx");
+    const gfxMode = () => window.__pulseGfx || localStorage.getItem("pulse-gfx") || "auto";
 
     function syncSettings() {
+      const lang = window.PULSE_LANG || "en";
+      langSeg.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.lang === lang));
       const th = html.getAttribute("data-theme") === "light" ? "light" : "dark";
       thSeg.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.th === th));
       soundSw.classList.toggle("on", soundOn);
-      if (liteSw) liteSw.classList.toggle("on", liteState());
+      if (gfxSeg) { const g = gfxMode(); gfxSeg.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.gfx === g)); }
     }
     window.__pulseSyncSettings = syncSettings;   // dipanggil applyTheme/setSound agar switch ikut update
 
+    langSeg.querySelectorAll("button").forEach((b) => (b.onclick = () => window.setLang(b.dataset.lang)));
     thSeg.querySelectorAll("button").forEach((b) => (b.onclick = () => applyTheme(b.dataset.th)));
     soundSw.onclick = () => setSound(!soundOn);
-    if (liteSw) liteSw.onclick = () => {                       // perlu reload: antialias/pixelRatio ditentukan saat renderer dibuat
-      localStorage.setItem("pulse-lite", liteState() ? "0" : "1");
-      location.reload();
+    if (gfxSeg) gfxSeg.querySelectorAll("button").forEach((b) => (b.onclick = () => {   // reload: antialias/pixelRatio ditentukan saat renderer dibuat
+      localStorage.setItem("pulse-gfx", b.dataset.gfx); location.reload();
+    }));
+    panel.querySelector("#setLogout").onclick = async () => {   // Keluar (hapus sesi)
+      try { await fetch("/api/logout", { method: "POST" }); } catch (e) {}
+      location.href = "/login";
     };
 
     function place() {
-      const r = settingsBtn.getBoundingClientRect();
+      const r = menuBtn.getBoundingClientRect();
       panel.style.top = r.bottom + 8 + "px";
       panel.style.right = Math.max(8, window.innerWidth - r.right) + "px";
     }
-    settingsBtn.onclick = (e) => {
+    menuBtn.onclick = (e) => {
       e.stopPropagation();
       const open = panel.classList.toggle("open");
-      settingsBtn.classList.toggle("active", open);
+      menuBtn.classList.toggle("active", open);
       if (open) { place(); syncSettings(); }
     };
     document.addEventListener("click", (e) => {
-      if (panel.classList.contains("open") && !panel.contains(e.target) && e.target !== settingsBtn) {
-        panel.classList.remove("open"); settingsBtn.classList.remove("active");
+      if (panel.classList.contains("open") && !panel.contains(e.target) && !menuBtn.contains(e.target)) {
+        panel.classList.remove("open"); menuBtn.classList.remove("active");
       }
     });
     window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") { panel.classList.remove("open"); settingsBtn.classList.remove("active"); }
+      if (e.key === "Escape") { panel.classList.remove("open"); menuBtn.classList.remove("active"); }
     });
     syncSettings();
   }

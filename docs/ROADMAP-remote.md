@@ -90,7 +90,7 @@ Monitoring only. Belum ada remote.
 - Terminal **multi-tab** (banyak sesi paralel; tiap tab titik status kuning/hijau/merah; ✕ per tab).
 - E2E lolos: peta kapabilitas benar, resolve per-device, device asing ditolak, host/cred tak bocor, Fase 1 (env) tetap jalan.
 - **Cara pakai:** `cp twinscape/remotes.example.json twinscape/remotes.json` → isi map **IP-monitoring → target SSH asli** (lihat §3). `remotes.json` gitignored (berisi host/username internal). Kredensial: default env `REMOTE_SSH_PASSWORD`/`REMOTE_SSH_KEY_FILE`; per-device override `keyFile`/`passwordEnv`.
-- **Sisa kecil:** tombol remote baru di viewer **3D**; belum di panel detail **2D** (floormap) — follow-up ringan.
+- **2D floormap:** tombol remote (SSH/VNC) kini **juga ada** di panel detail 2D ✅ (2026-07-14).
 
 ### Fase 3 — VNC (desktop)  · ✅ SUDAH DIBANGUN (2026-07-14)
 - **Server = pipa MENTAH WS↔TCP** (`/vnc?device=<ip>`, pakai `net`). Tak perlu library VNC — noVNC (browser) yang bicara RFB; server cuma teruskan byte. Target dari `remotes.json` blok `vnc:{host,port}`.
@@ -100,7 +100,7 @@ Monitoring only. Belum ada remote.
 - **Password VNC:** kalau server VNC minta, **noVNC prompt** (user ketik per-sesi, tak disimpan). Injeksi password VNC server-side = Fase 4.
 - `REMOTES_FILE` env (opsional) → taruh `remotes.json` di luar repo.
 - E2E lolos: passthrough byte dua arah, kapabilitas vnc benar, device tanpa vnc ditolak. SSH (Fase 1/2) tanpa regresi.
-- **Prasyarat pakai:** device tujuan harus menjalankan **server VNC** (port 5900 dst). 2D floormap tetap belum (ditunda).
+- **Prasyarat pakai:** device tujuan harus menjalankan **server VNC** (port 5900 dst). **2D floormap: tombol remote sudah dipasang juga** (2026-07-14).
 
 ### Fase 4 — Keamanan serius (sebelum boleh dibuka ke luar)  · sebagian ✅
 

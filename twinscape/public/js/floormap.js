@@ -51,7 +51,7 @@ async function resolveLocation() {
     const floors = (activeLoc && activeLoc.floors) || [];
     activeFloor = floors.find((f) => f.id === params.get("floor")) || floors[0] || null;   // E5
   } catch { activeLoc = null; activeFloor = null; }
-  const el = $("sceneInfo"); if (el) el.textContent = activeLoc ? activeLoc.name : "Monitoring";
+  const el = $("sceneInfo"); if (el) el.textContent = activeLoc ? activeLoc.name : t("monitoring");
 }
 async function loadLayout() {
   const param = new URLSearchParams(location.search).get("layout");
@@ -126,15 +126,15 @@ function connect() {
   ws.onmessage = (e) => {
     let msg; try { msg = JSON.parse(e.data); } catch { return; }
     if (msg.type === "cmd_result") return;
-    if (msg.type === "pulse_status") { setConn(msg.up, msg.up ? "Connected" : "Sumber offline"); return; }
+    if (msg.type === "pulse_status") { setConn(msg.up, msg.up ? t("connected") : t("source_offline")); return; }
     if (msg.devices) { applyStatus(msg.devices); lastDataAt = Date.now(); if ($("connDot").classList.contains("stale")) setConn(true); }   // #3
-    if (msg.timestamp) { const lu = $("lastUpdate"); if (lu) lu.textContent = `Update ${msg.timestamp}`; }
+    if (msg.timestamp) { const lu = $("lastUpdate"); if (lu) lu.textContent = `${t("update")} ${msg.timestamp}`; }
   };
 }
 function setConn(ok, label) {
   $("connDot").classList.remove("stale");   // #3
   $("connDot").classList.toggle("connected", ok);
-  $("connLabel").textContent = label || (ok ? "Connected" : "Disconnected");
+  $("connLabel").textContent = label || (ok ? t("connected") : t("offline"));
 }
 // #3 — tandai "Data basi" bila tersambung tapi tak ada payload > STALE_MS
 function staleCheck() {
@@ -274,6 +274,7 @@ function renderDetail(d) {
   const trend = (d.history || []).slice(-24);            // E9: kronologis kiri→kanan
   const hist = (d.history || []).slice(-6).reverse();
   const p = pinByIp[d.ip] || { x: "—", y: "—" };
+  const rcaps = window.remoteCaps ? window.remoteCaps(d.ip) : { ssh: false, vnc: false };   // kapabilitas remote device ini
   detailContent.innerHTML = `
     <div class="dt-head">
       <div><h2>${esc(d.name)}</h2>
@@ -281,11 +282,15 @@ function renderDetail(d) {
       <button class="dt-close" id="dtClose">✕</button>
     </div>
     <div class="dt-body">
-      <div class="dt-status-banner ${isDown ? "down" : hasData ? "up" : ""}"${hasData ? "" : ' style="background:var(--hover);color:var(--text-dim);border:1px solid var(--border)"'}><span>●</span><span>${isDown ? "DEVICE DOWN" : hasData ? "DEVICE UP" : "TIDAK ADA DATA LIVE"}</span>
+      <div class="dt-status-banner ${isDown ? "down" : hasData ? "up" : ""}"${hasData ? "" : ' style="background:var(--hover);color:var(--text-dim);border:1px solid var(--border)"'}><span>●</span><span>${isDown ? t("device_down") : hasData ? t("device_up") : t("no_live_data")}</span>
         ${isDown && d.downSince ? `<span style="margin-left:auto;font-size:12px;font-weight:600" id="dtLive">—</span>` : ""}</div>
-      ${hasData ? "" : `<div class="dt-empty" style="margin:0 0 12px">Device IP ini belum melapor dari WS lokasi ini.</div>`}
+      ${hasData ? "" : `<div class="dt-empty" style="margin:0 0 12px">${t("not_reported")}</div>`}
+      ${(rcaps.ssh || rcaps.vnc) ? `<div class="dt-actions">
+        ${rcaps.ssh ? `<button class="dt-ssh" id="dtSSH">Open SSH</button>` : ``}
+        ${rcaps.vnc ? `<button class="dt-ssh vnc" id="dtVNC">Open VNC</button>` : ``}
+      </div>` : ``}
       <div class="dt-section">Status Trend</div>
-      <div class="mini-trend">${trend.length ? trend.map((h) => `<i class="${h.status === "UP" ? "up" : "down"}"></i>`).join("") : `<span class="empty">Belum ada data.</span>`}</div>
+      <div class="mini-trend">${trend.length ? trend.map((h) => `<i class="${h.status === "UP" ? "up" : "down"}"></i>`).join("") : `<span class="empty">${t("no_data_yet")}</span>`}</div>
       <div class="dt-section">Network Quality</div>
       <div class="dt-grid">
         <div class="dt-item"><div class="dt-label">Availability</div><div class="dt-val ${hasData ? (d.uptimeToday >= 99 ? "up" : "down") : ""}">${availTxt}</div></div>
@@ -305,9 +310,11 @@ function renderDetail(d) {
       <div class="dt-events">${hist.length ? hist.map((h) => `
         <div class="dt-ev"><span class="ev-dot ${h.status.toLowerCase()}"></span><span class="ev-time">${h.timestamp}</span>
         <span class="ev-status" style="color:${h.status === "UP" ? "var(--up)" : "var(--down)"}">${h.status}</span></div>`).join("")
-      : `<div class="dt-empty">Belum ada event.</div>`}</div>
+      : `<div class="dt-empty">${t("no_events")}</div>`}</div>
     </div>`;
   $("dtClose").onclick = closeDetail;
+  { const b = $("dtSSH"); if (b) b.onclick = () => window.openSSH && window.openSSH(d.ip, d.name); }
+  { const v = $("dtVNC"); if (v) v.onclick = () => window.openVNC && window.openVNC(d.ip, d.name); }
   startDtLive(d);
 }
 function startDtLive(d) {

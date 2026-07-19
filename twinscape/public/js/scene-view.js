@@ -43,6 +43,7 @@ let modelsPending = 0, sceneReadyFired = false, readyTimer = null;   // #1: spla
 let wsRetry = 2000, lastDataAt = 0;   // #2 reconnect backoff+jitter · #3 deteksi data basi
 const STALE_MS = 25000;               // data dianggap "basi" bila tak ada payload selama ini
 let lite = false, frameMs = 0, lastFrame = 0;   // #4 mode ringan (grafis hemat GPU) + cap FPS
+let fpsWarm = 0, fpsStart = 0, fpsFrames = 0, fpsLast = 0, fpsDone = false;   // pengukur FPS → saran Ringan
 let camAnim = null, savedCam = null, lastT = 0;   // klik→zoom ke titik, tutup→balik
 const modelCache = {};      // A2: url -> Promise<gltf.scene> (load-once, lalu clone)
 
@@ -67,6 +68,7 @@ if (!webglSupported()) {
     initThree();
     bindInteraction();
     animate();
+    showGfxChip();                        // chip "⚡ Ringan" kalau lite aktif
     boot();
   } catch (err) { showError(err); }
 }
@@ -74,12 +76,17 @@ function webglSupported() {
   try { const c = document.createElement("canvas"); return !!(window.WebGLRenderingContext && (c.getContext("webgl2") || c.getContext("webgl"))); }
   catch (e) { return false; }
 }
-// #4 — mode ringan: hormati pilihan user (localStorage), kalau belum diset → auto-deteksi PC lemah
+// #4 — grafis 3-state (localStorage pulse-gfx: auto|high|lite). Auto → auto-deteksi PC lemah.
+function currentGfx() {
+  const m = localStorage.getItem("pulse-gfx");
+  if (m === "auto" || m === "high" || m === "lite") return m;
+  const old = localStorage.getItem("pulse-lite");                 // migrasi dari toggle lama (1/0)
+  return old === "1" ? "lite" : old === "0" ? "high" : "auto";
+}
 function decideLite() {
-  const saved = localStorage.getItem("pulse-lite");
-  if (saved === "1") return true;
-  if (saved === "0") return false;
-  return autoLite();
+  const m = currentGfx();
+  window.__pulseGfx = m;                                          // dibaca menu Pengaturan
+  return m === "lite" ? true : m === "high" ? false : autoLite();
 }
 function autoLite() {
   try {
@@ -95,7 +102,44 @@ function autoLite() {
   if ((navigator.hardwareConcurrency || 8) <= 2) return true;
   return false;
 }
-// Toggle mode ringan sekarang ada di panel Settings ⚙ (pulse-chrome.js); scene-view cukup ekspos window.__pulseLite.
+// Chip indikator "⚡ Ringan" — hanya muncul saat lite aktif; klik → buka menu Pengaturan. (Kontrol 3-state ada di pulse-chrome.js.)
+function showGfxChip() {
+  if (!lite || document.getElementById("gfxChip")) return;
+  const c = document.createElement("div");
+  c.id = "gfxChip"; c.className = "gfx-chip";
+  c.textContent = "⚡ " + t("gfx_lite", "Lite");
+  c.title = t("gfx_chip_title", "Lite graphics active — click to change");
+  c.onclick = () => { const m = document.getElementById("menuBtn"); if (m) m.click(); };
+  const vt = document.querySelector(".view-toggle");      // taruh di kiri toggle 3D|2D (sebaris)
+  if (vt) vt.insertBefore(c, vt.firstChild); else document.body.appendChild(c);
+}
+
+// FPS-suggestion — hanya saat mode AUTO & belum lite: ukur FPS nyata (warmup 4s, sampel 3s), kalau <30 → tawarkan Ringan.
+function measureFps(now) {
+  if (fpsDone || lite || window.__pulseGfx !== "auto" || !now) return;
+  if (!fpsWarm) { fpsWarm = now; fpsLast = now; return; }
+  if (now - fpsWarm < 4000) { fpsLast = now; return; }               // lewati loading/settle
+  if (now - fpsLast > 500) { fpsStart = 0; fpsFrames = 0; }           // jeda besar (tab hidden/stall) → ukur ulang
+  fpsLast = now;
+  if (!fpsStart) { fpsStart = now; fpsFrames = 0; return; }
+  fpsFrames++;
+  if (now - fpsStart >= 3000) {
+    fpsDone = true;
+    const fps = fpsFrames / ((now - fpsStart) / 1000);
+    if (fps < 30 && !sessionStorage.getItem("pulse-fps-dismiss")) suggestLite(Math.round(fps));
+  }
+}
+function suggestLite(fps) {
+  if (document.getElementById("fpsSuggest")) return;
+  const el = document.createElement("div");
+  el.id = "fpsSuggest"; el.className = "fps-suggest";
+  el.innerHTML = `<span>${t("fps_low", "Low frame rate")} (~${fps} fps). ${t("fps_ask", "Switch to Lite for a smoother view?")}</span>` +
+    `<div class="fps-actions"><button class="fps-yes">${t("fps_enable", "Enable Lite")}</button><button class="fps-no">${t("fps_dismiss", "Dismiss")}</button></div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("show"));
+  el.querySelector(".fps-yes").onclick = () => { localStorage.setItem("pulse-gfx", "lite"); location.reload(); };
+  el.querySelector(".fps-no").onclick = () => { sessionStorage.setItem("pulse-fps-dismiss", "1"); el.classList.remove("show"); setTimeout(() => el.remove(), 300); };
+}
 
 // Lokasi + lantai aktif (dari locations.json) → menentukan scene + nama panel + WS.
 let activeLoc = null, activeFloor = null;
@@ -123,7 +167,7 @@ async function resolveLocation() {
     const floors = (activeLoc && activeLoc.floors) || [];
     activeFloor = floors.find((f) => f.id === params.get("floor")) || floors[0] || null;   // E5: lantai default = pertama
   } catch { activeLoc = null; activeFloor = null; }
-  const el = $("sceneInfo"); if (el) el.textContent = activeLoc ? activeLoc.name : "Monitoring";
+  const el = $("sceneInfo"); if (el) el.textContent = activeLoc ? activeLoc.name : t("monitoring");
 }
 
 function initThree() {
@@ -224,6 +268,7 @@ function animate(now) {
   }
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
+  measureFps(now);                       // saran mode Ringan bila FPS nyata rendah (mode Auto saja)
 }
 function onResize() {
   const w = stage.clientWidth, h = stage.clientHeight;
@@ -317,7 +362,7 @@ function buildFromScene(s) {
   sceneReadyFired = false;
   modelsPending = (s.models || []).length;
   clearTimeout(readyTimer); readyTimer = setTimeout(fireSceneReady, 12000);   // pengaman bila ada model gagal/hang
-  if (splashMsg && modelsPending) splashMsg.textContent = "Menyiapkan tampilan 3D…";
+  if (splashMsg && modelsPending) splashMsg.textContent = t("preparing_3d");
   (s.models || []).forEach((d) => addModel(d));
 
   if (s.camera && s.camera.position && s.camera.target) {
@@ -794,15 +839,15 @@ function renderDetail(d) {
       <button class="dt-close" id="dtClose">✕</button>
     </div>
     <div class="dt-body">
-      <div class="dt-status-banner ${isDown ? "down" : hasData ? "up" : ""}"${hasData ? "" : ' style="background:var(--hover);color:var(--text-dim);border:1px solid var(--border)"'}><span>●</span><span>${isDown ? "DEVICE DOWN" : hasData ? "DEVICE UP" : "TIDAK ADA DATA LIVE"}</span>
+      <div class="dt-status-banner ${isDown ? "down" : hasData ? "up" : ""}"${hasData ? "" : ' style="background:var(--hover);color:var(--text-dim);border:1px solid var(--border)"'}><span>●</span><span>${isDown ? t("device_down") : hasData ? t("device_up") : t("no_live_data")}</span>
         ${isDown && d.downSince ? `<span style="margin-left:auto;font-size:12px;font-weight:600" id="dtLive">—</span>` : ""}</div>
-      ${hasData ? "" : `<div class="dt-empty" style="margin:0 0 12px">Device IP ini belum melapor dari WS lokasi ini.</div>`}
+      ${hasData ? "" : `<div class="dt-empty" style="margin:0 0 12px">${t("not_reported")}</div>`}
       ${(rcaps.ssh || rcaps.vnc) ? `<div class="dt-actions">
         ${rcaps.ssh ? `<button class="dt-ssh" id="dtSSH">Open SSH</button>` : ``}
         ${rcaps.vnc ? `<button class="dt-ssh vnc" id="dtVNC">Open VNC</button>` : ``}
       </div>` : ``}
       <div class="dt-section">Status Trend</div>
-      <div class="mini-trend">${trend.length ? trend.map((h) => `<i class="${h.status === "UP" ? "up" : "down"}"></i>`).join("") : `<span class="empty">Belum ada data.</span>`}</div>
+      <div class="mini-trend">${trend.length ? trend.map((h) => `<i class="${h.status === "UP" ? "up" : "down"}"></i>`).join("") : `<span class="empty">${t("no_data_yet")}</span>`}</div>
       <div class="dt-section">Network Quality</div>
       <div class="dt-grid">
         <div class="dt-item"><div class="dt-label">Availability</div><div class="dt-val ${hasData ? (avail >= 99 ? "up" : "down") : ""}">${hasData ? avail + "%" : "—"}</div></div>
@@ -822,7 +867,7 @@ function renderDetail(d) {
       <div class="dt-events">${hist.length ? hist.map((h) => `
         <div class="dt-ev"><span class="ev-dot ${h.status.toLowerCase()}"></span><span class="ev-time">${h.timestamp}</span>
         <span class="ev-status" style="color:${h.status === "UP" ? "var(--up)" : "var(--down)"}">${h.status}</span></div>`).join("")
-      : `<div class="dt-empty">Belum ada event.</div>`}</div>
+      : `<div class="dt-empty">${t("no_events")}</div>`}</div>
     </div>`;
   $("dtClose").onclick = closeDetail;
   { const b = $("dtSSH"); if (b) b.onclick = () => window.openSSH && window.openSSH(d.ip, d.name); }
@@ -853,18 +898,18 @@ function connectWS() {
   ws.onmessage = (e) => {
     let m; try { m = JSON.parse(e.data); } catch { return; }
     if (m.type === "cmd_result") return;
-    if (m.type === "pulse_status") { setConn(m.up, m.up ? "Connected" : "Sumber offline"); return; }   // status sumber (upstream)
+    if (m.type === "pulse_status") { setConn(m.up, m.up ? t("connected") : t("source_offline")); return; }   // status sumber (upstream)
     if (m.devices) {
       m.devices.forEach((d) => (deviceByIp[d.ip] = d)); applyStatus(m.devices);   // applyStatus → updateSummary
       lastDataAt = Date.now(); if ($("connDot").classList.contains("stale")) setConn(true);   // #3: data segar lagi
     }
-    if (m.timestamp) $("lastUpdate").textContent = `Update ${m.timestamp}`;
+    if (m.timestamp) $("lastUpdate").textContent = `${t("update")} ${m.timestamp}`;
   };
 }
 function setConn(ok, label) {
   $("connDot").classList.remove("stale");   // #3
   $("connDot").classList.toggle("connected", ok);
-  $("connLabel").textContent = label || (ok ? "Connected" : "Disconnected");
+  $("connLabel").textContent = label || (ok ? t("connected") : t("offline"));
 }
 // #3 — tandai "Data basi" bila tersambung tapi tak ada payload > STALE_MS
 function staleCheck() {

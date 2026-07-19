@@ -30,8 +30,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 #labelLayer{position:absolute;inset:0;overflow:hidden;pointer-events:none}
 
 /* ---------- top bar ---------- */
-.topbar{position:fixed;top:0;left:0;right:0;z-index:30;height:58px;display:flex;align-items:center;gap:18px;
-  padding:0 18px;background:var(--panel);backdrop-filter:blur(22px);border-bottom:1px solid var(--border);box-shadow:0 1px 0 rgba(0,0,0,.15)}
+.topbar{position:fixed;top:0;left:0;right:0;z-index:30;height:58px;display:flex;align-items:center;gap:13px;
+  padding:0 12px 0 18px;background:var(--panel);backdrop-filter:blur(22px);border-bottom:1px solid var(--border);box-shadow:0 1px 0 rgba(0,0,0,.15)}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;color:var(--text-bright);letter-spacing:.2px}
 .brand-mark{display:flex;flex-shrink:0;filter:drop-shadow(0 3px 8px rgba(37,99,235,.35))}
 .brand-mark svg{display:block}
@@ -65,6 +65,26 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .settings-panel .set-row>span{display:flex;flex-direction:column;font:600 13px Inter,sans-serif;color:var(--text)}
 .settings-panel .set-row>span small{font:500 11px Inter,sans-serif;color:var(--text-dim);margin-top:2px}
 .settings-panel .seg.mini button{padding:5px 12px;font-size:12px}
+.settings-panel .set-sep{height:1px;background:var(--border);margin:6px 4px}
+.settings-panel .set-logout{width:100%;text-align:left;padding:9px 8px;border:none;background:transparent;color:var(--down);font:600 13px Inter,sans-serif;border-radius:9px;cursor:pointer}
+.settings-panel .set-logout:hover{background:var(--hover)}
+.settings-panel .set-row.set-col{flex-direction:column;align-items:stretch;gap:8px}
+.settings-panel .set-gfx{display:flex}
+.settings-panel .set-gfx button{flex:1;padding:5px 4px;font-size:12px}
+/* chip indikator grafis Ringan (hanya muncul saat lite aktif) */
+.gfx-chip{display:flex;align-items:center;gap:5px;flex-shrink:0;white-space:nowrap;
+  background:var(--panel);border:1px solid var(--high);color:var(--high);border-radius:999px;
+  padding:5px 11px;font:700 11px Inter,sans-serif;cursor:pointer;box-shadow:var(--shadow);backdrop-filter:blur(10px);transition:all .15s}
+.gfx-chip:hover{background:var(--high);color:#fff}
+/* saran mode Ringan berbasis FPS (toast atas-tengah) */
+.fps-suggest{position:fixed;top:72px;left:50%;transform:translateX(-50%) translateY(-8px);z-index:60;
+  display:flex;align-items:center;gap:14px;max-width:92vw;background:var(--panel-solid);border:1px solid var(--high);
+  border-radius:12px;padding:10px 14px;box-shadow:var(--shadow);font-size:12.5px;color:var(--text);
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+.fps-suggest.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+.fps-actions{display:flex;gap:6px;flex-shrink:0}
+.fps-suggest .fps-yes{padding:6px 12px;border:none;border-radius:8px;background:var(--high);color:#fff;font:700 12px Inter,sans-serif;cursor:pointer}
+.fps-suggest .fps-no{padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-dim);font:600 12px Inter,sans-serif;cursor:pointer}
 .switch{position:relative;width:42px;height:24px;border-radius:999px;border:1px solid var(--border);background:var(--hover);
   cursor:pointer;flex-shrink:0;padding:0;transition:background .18s,border-color .18s}
 .switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--text-dim);transition:transform .18s,background .18s}
@@ -141,8 +161,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 /* ---------- bottom-right controls + hint ---------- */
 .ctrls{position:fixed;bottom:18px;right:18px;z-index:15;display:flex;gap:8px}
 .ctrls .icon-btn{background:var(--panel);backdrop-filter:blur(10px)}
-.hint{position:fixed;bottom:18px;left:18px;z-index:15;font-size:11px;color:var(--text-dim);
-  background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:8px 12px;backdrop-filter:blur(10px);line-height:1.6}
+.hint{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:15;font-size:11px;color:var(--text-dim);
+  background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:8px 12px;backdrop-filter:blur(10px);line-height:1.6;white-space:nowrap}
 .hint kbd{font-family:monospace;background:var(--hover);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:10px}
 
 /* ---------- floating 3D labels (CSS2D) ---------- */
@@ -204,6 +224,7 @@ body.detail-open .view-toggle,body.detail-open .ctrls{right:calc(min(340px,90vw)
 /* ---------- legend ---------- */
 .fm-legend{position:fixed;left:18px;bottom:64px;z-index:15;background:var(--panel);border:1px solid var(--border);
   border-radius:10px;padding:10px 13px;backdrop-filter:blur(12px)}
+body[data-view="3d"] .fm-legend{bottom:18px}   /* 3D: segaris hint (tengah) + reset (kanan) */
 .fm-legend .lg-title{font-size:10px;font-weight:700;letter-spacing:.6px;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px}
 .fm-legend .lg-row{display:flex;align-items:center;gap:8px;font-size:11px;margin-top:4px;color:var(--text)}
 .lg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
@@ -264,7 +285,7 @@ body.detail-open .view-toggle,body.detail-open .ctrls{right:calc(min(340px,90vw)
    FASE E — cari (E3), filter (E4), mini-trend & ikon severity (E9)
    ===================================================================== */
 /* toggle 3D/2D melayang di kanan-atas (di bawah header) */
-.view-toggle{position:fixed;top:70px;right:16px;z-index:18}
+.view-toggle{position:fixed;top:70px;right:16px;z-index:18;display:flex;align-items:center;gap:8px}
 .view-toggle .seg{background:var(--panel);backdrop-filter:blur(14px);box-shadow:var(--shadow)}
 
 /* search di topbar (lebar tetap, di ujung kanan) */
