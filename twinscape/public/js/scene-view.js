@@ -73,10 +73,17 @@ function inScope(o) {   // Fase 4: device masuk konteks aktif? (All=semua; fokus
 }
 // SATU penulis untuk ball/ring/stem/label = gabungan (filter status × redup konteks). Halo diurus di animate().
 function renderBeacon(o) {
-  const op = o.dimmed ? 0.1 : (o.dimF ?? 1);
+  const df = o.dimF ?? 1;
+  o.bc.group.visible = df > 0.02;   // dimF≈0 = lantai di atas yg aktif → sembunyikan beacon (+ label CSS2D ikut hilang)
+  const op = o.dimmed ? 0.1 : df;
   [o.bc.ball, o.bc.ring].forEach((m) => { m.material.transparent = true; m.material.opacity = op; });
   if (o.bc.stem) { o.bc.stem.material.transparent = true; o.bc.stem.material.opacity = op; }
-  if (o.labelEl) o.labelEl.style.opacity = o.dimmed ? "0.1" : ((o.dimF ?? 1) < 0.6 ? "0.28" : "");
+  if (o.labelEl) o.labelEl.style.opacity = o.dimmed ? "0.1" : (df < 0.6 ? "0.28" : "");
+}
+function floorY(fid, floorId) {   // tinggi lantai dari manifest (utk angkat objek + urutan atas/bawah)
+  const f = facById[fid]; if (!f || !floorId) return 0;
+  const fl = (f.floors || []).find((x) => x.id === floorId);
+  return fl ? (fl.y || 0) : 0;
 }
 function staticize(obj) {   // perf: objek statis (lantai/tembok/model/teks) → matriks tak dihitung ulang tiap frame. Aman: tak pernah bergerak; redup hanya ubah material, bukan transform.
   obj.traverse((o) => { o.updateMatrix(); o.matrixAutoUpdate = false; });
@@ -94,12 +101,18 @@ function applyGroupDim(g, op) {   // skala opacity relatif thd nilai asli (jaga 
 }
 // satu sumber kebenaran: target redup tiap grup + tiap device dari (focusedFactory, activeFloorId)
 function applyDimState() {
+  // Multi-lantai (konsep "tumpuk + sembunyikan lantai di atas"): lantai di ATAS aktif → op 0 (disembunyikan animate),
+  // lantai aktif → 1, lantai di BAWAH → 0.28 (redup jadi konteks). Envelope ("") & factory lain tetap tampil.
   districtFactories.forEach((f) => {
     const facOn = !focusedFactory || f.id === focusedFactory;
+    const activeY = activeFloorId ? floorY(f.id, activeFloorId) : null;
     for (const key in f.groups) {
       let op = 1;
       if (!facOn) op = 0.16;                                                   // factory lain: buram
-      else if (focusedFactory && activeFloorId && key && key !== activeFloorId) op = 0.28;   // lantai non-aktif di factory fokus
+      else if (activeY !== null && key) {                                      // ada lantai aktif & ini grup ber-lantai
+        const ky = floorY(f.id, key);
+        op = ky > activeY ? 0 : ky < activeY ? 0.28 : 1;                       // atas→sembunyi, bawah→redup, sama→terang
+      }
       f.groups[key].target = op;
     }
   });
@@ -107,8 +120,13 @@ function applyDimState() {
     const o = deviceObjs[ip];
     if (!o.factory) { o.dimF = 1; renderBeacon(o); continue; }                  // beacon kawasan (jalan) selalu tampil
     const facOn = !focusedFactory || o.factory === focusedFactory;
-    const floorOn = !focusedFactory || !activeFloorId || !o.floor || o.floor === activeFloorId;
-    o.dimF = !facOn ? 0.2 : (floorOn ? 1 : 0.3);
+    let df = 1;
+    if (!facOn) df = 0.2;                                                       // factory lain: redup
+    else if (activeFloorId && o.floor) {
+      const ky = floorY(o.factory, o.floor), ay = floorY(o.factory, activeFloorId);
+      df = ky > ay ? 0 : ky < ay ? 0.3 : 1;                                     // beacon lantai atas → sembunyi
+    }
+    o.dimF = df;
     renderBeacon(o);
   }
   updateSummary();   // Fase 4: angka panel ikut konteks (All ⇄ fokus)
@@ -359,7 +377,12 @@ function animate(now) {
     for (const f of districtFactories) {
       for (const key in f.groups) {
         const g = f.groups[key];
-        if (Math.abs(g.cur - g.target) > 0.004) { g.cur += (g.target - g.cur) * Math.min(1, dt * 6); applyGroupDim(g, g.cur); any = true; }
+        if (Math.abs(g.cur - g.target) > 0.004) {
+          g.cur += (g.target - g.cur) * Math.min(1, dt * 6);
+          applyGroupDim(g, g.cur);
+          const vis = g.cur > 0.02; g.objs.forEach((o) => { if (o.visible !== vis) o.visible = vis; });   // lantai pudar total → sembunyikan (hilangkan occlusion + hemat render)
+          any = true;
+        }
       }
     }
     dimActive = any;
@@ -503,7 +526,7 @@ function selectFactory(id) {
   applyDimState();
   setDeepLink();
   if (!focusedFactory) frameBox(new THREE.Box3().setFromObject(built), 1.4);   // All = fit seluruh kawasan
-  else frameBox(facById[focusedFactory].box, 1.5);
+  else frameBox(facById[focusedFactory].box, 0.95);   // fokus factory → lebih dekat (dulu 1.5, kejauhan)
 }
 function selectFloor(floorId) {   // Fase 3: pilih lantai aktif (bright), lainnya redup — tanpa gerakkan kamera
   const floors = (facById[focusedFactory] && facById[focusedFactory].floors) || [];
@@ -768,7 +791,7 @@ function registerDevice(ip, name, bc) {
 
 function addPinDevice(d) {
   const bc = makeBeacon(2.35, true);
-  bc.group.position.set(d.x, d.y || 0, d.z);   // y: pin lantai bertumpuk
+  bc.group.position.set(d.x, d.y || floorY(d.factory, d.floor), d.z);   // y: pin lantai bertumpuk (fallback ke tinggi lantai dari manifest kalau pin ter-authoring di y=0)
   built.add(bc.group);
   registerDevice(d.ip, d.label || d.ip, bc);
   tagDevice(d.ip, d.factory, d.floor);
