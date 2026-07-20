@@ -94,6 +94,9 @@
     preparing_vnc: { en: "Preparing VNC (running command via SSH)…", id: "Menyiapkan VNC (menjalankan perintah via SSH)…" },
     vnc_pw: { en: "VNC password for", id: "Password VNC untuk" },
     remote_denied: { en: "You're not allowed to remote this device.", id: "Kamu tak diizinkan me-remote device ini." },
+    // ── kawasan / district ──
+    factory: { en: "Factory", id: "Factory" },
+    all_factories: { en: "All", id: "Semua" },
   };
 
   var LANG = localStorage.getItem("pulse-lang") || "en";

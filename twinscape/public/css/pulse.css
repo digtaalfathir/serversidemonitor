@@ -165,6 +165,16 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:8px 12px;backdrop-filter:blur(10px);line-height:1.6;white-space:nowrap}
 .hint kbd{font-family:monospace;background:var(--hover);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:10px}
 
+/* Fase 2 — selektor factory kawasan (All ⇄ fokus), muncul hanya bila scene punya manifest factories */
+.factory-nav{position:fixed;top:72px;left:50%;transform:translateX(-50%);z-index:16;display:flex;align-items:center;gap:9px;
+  padding:6px 8px 6px 13px;background:var(--panel);backdrop-filter:blur(22px);border:1px solid var(--border);border-radius:12px;box-shadow:0 6px 22px rgba(0,0,0,.22)}
+.factory-nav .fn-lbl{font:700 11px Inter,sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--text-dim)}
+.factory-nav select{appearance:none;-webkit-appearance:none;border:1px solid var(--border);border-radius:8px;background:var(--hover);
+  color:var(--text-bright);font:600 12.5px Inter,sans-serif;padding:6px 26px 6px 10px;cursor:pointer;outline:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238b9ab4' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center}
+.factory-nav select:hover,.factory-nav select:focus{border-color:var(--accent)}
+
 /* ---------- floating 3D labels (CSS2D) ---------- */
 .mk3d-label{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:var(--text-bright);
   background:var(--panel-solid);border:1px solid var(--border);border-radius:6px;padding:2px 8px;white-space:nowrap;box-shadow:var(--shadow)}
