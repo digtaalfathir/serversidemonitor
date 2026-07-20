@@ -51,7 +51,7 @@ const modelCache = {};      // A2: url -> Promise<gltf.scene> (load-once, lalu c
 
 // Fase 2/3 kawasan — grup objek per factory (dan per-lantai) + fokus/dim (bounds dari objek ber-tag)
 // factory = { id, name, floors:[{id,name,y}], box:Box3, groups: { "<floorId|''>": {objs:[], cur:1, target:1} } }
-let districtFactories = [], facById = {}, focusedFactory = "", activeFloorId = "";
+let districtFactories = [], facById = {}, focusedFactory = "", activeFloorId = "", nameTexts = [];
 function facGroup(f, floorId) {   // ambil/buat grup (factory, lantai) — key "" = objek factory tanpa lantai (selubung/tanah)
   const key = floorId || "";
   return f.groups[key] || (f.groups[key] = { objs: [], cur: 1, target: 1 });
@@ -59,7 +59,9 @@ function facGroup(f, floorId) {   // ambil/buat grup (factory, lantai) — key "
 function tagObj(obj, fid, floorId) {   // catat obj ke grup (factory,lantai) + perluas bounds factory
   if (!fid || !facById[fid] || !obj) return;
   obj.userData.factory = fid;
-  facGroup(facById[fid], floorId).objs.push(obj);
+  const g = facGroup(facById[fid], floorId);
+  g.objs.push(obj);
+  if (g.cur < 0.999) applyGroupDim({ objs: [obj] }, g.cur);   // grup sudah redup (mis. fokus saat model async loading) → samakan objek baru langsung
   facById[fid].box.expandByObject(obj);
 }
 function tagDevice(ip, fid, floorId) {   // beacon TIDAK masuk grup struktur — diredupkan via renderBeacon (dimF), hindari 2 penulis opacity
@@ -129,6 +131,7 @@ function applyDimState() {
     o.dimF = df;
     renderBeacon(o);
   }
+  nameTexts.forEach((sp) => { sp.visible = !focusedFactory; });   // label nama factory: tampil di All, sembunyikan saat fokus (biar tak nutupi pas zoom)
   updateSummary();   // Fase 4: angka panel ikut konteks (All ⇄ fokus)
   updateHint();
   dimActive = true; dirty = true;   // perf: bangunkan loop utk animasi redup + render
@@ -525,7 +528,7 @@ function selectFactory(id) {
   updateFloorSelector();
   applyDimState();
   setDeepLink();
-  if (!focusedFactory) frameBox(new THREE.Box3().setFromObject(built), 1.4);   // All = fit seluruh kawasan
+  if (!focusedFactory) frameBox(new THREE.Box3().setFromObject(built), 0.9);   // All = fit seluruh kawasan (lebih dekat, dulu 1.4 kejauhan)
   else frameBox(facById[focusedFactory].box, 0.95);   // fokus factory → lebih dekat (dulu 1.5, kejauhan)
 }
 function selectFloor(floorId) {   // Fase 3: pilih lantai aktif (bright), lainnya redup — tanpa gerakkan kamera
@@ -546,7 +549,7 @@ function buildFromScene(s) {
   // nama panel = name lokasi (di-set resolveLocation), BUKAN nama scene (terlalu teknis).
 
   districtFactories = (s.factories || []).map((f) => ({ id: f.id, name: f.name, floors: f.floors || [], box: new THREE.Box3(), groups: {} }));
-  facById = {}; focusedFactory = ""; activeFloorId = "";
+  facById = {}; focusedFactory = ""; activeFloorId = ""; nameTexts = [];
   districtFactories.forEach((f) => { facById[f.id] = f; });
 
   if (s.lighting) applyLighting(s.lighting);
@@ -568,7 +571,12 @@ function buildFromScene(s) {
     if (floorTop === null || t > floorTop) floorTop = t;
   });
   modelClip.constant = floorTop === null ? 1e6 : -floorTop;   // ada lantai → potong model di garis lantai
-  (s.texts || []).forEach((d) => { const sp = makeTextSprite(d); tagObj(sp, d.factory, d.floor); staticize(sp); built.add(sp); });
+  (s.texts || []).forEach((d) => {
+    const sp = makeTextSprite(d);
+    if ((d.size || 1) >= 1.5) nameTexts.push(sp);          // label nama factory (besar) → kelola visibilitas terpisah (tampil di All, sembunyi saat fokus); tak ikut redup grup
+    else tagObj(sp, d.factory, d.floor);                    // teks kecil (mis. nama ruang) → ikut redup factory-nya
+    staticize(sp); built.add(sp);
+  });
   (s.pins || []).forEach((d) => addPinDevice(d));
   sceneReadyFired = false;
   modelsPending = (s.models || []).length;
