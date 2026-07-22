@@ -3379,7 +3379,7 @@
    "label": "DCS Task Force",
    "factory": "f4",
    "floor": "l2",
-   "y": 15
+   "y": 16.7
   },
   {
    "x": 40,
@@ -3388,7 +3388,7 @@
    "label": "DCS Repair Out Line",
    "factory": "f4",
    "floor": "l2",
-   "y": 15
+   "y": 16.7
   },
   {
    "x": 40,
@@ -3397,7 +3397,7 @@
    "label": "DCS Poles",
    "factory": "f4",
    "floor": "l2",
-   "y": 15
+   "y": 16.7
   },
   {
    "x": 33,
@@ -3406,7 +3406,7 @@
    "label": "DCS Repair In Line",
    "factory": "f4",
    "floor": "l2",
-   "y": 15
+   "y": 16.7
   },
   {
    "x": 27,
@@ -3415,7 +3415,7 @@
    "label": "DCS QI",
    "factory": "f4",
    "floor": "l2",
-   "y": 15
+   "y": 16.7
   },
   {
    "x": 27,
@@ -3424,7 +3424,7 @@
    "label": "DCS Playmaker",
    "factory": "f4",
    "floor": "l2",
-   "y": 15
+   "y": 16.7
   },
   {
    "x": 23.5,
