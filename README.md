@@ -8,6 +8,10 @@ Web app to **monitor _and_ operate** your hardware & servers through an interact
 **2D / 3D digital twin** — watch live device status on a map of your real facility, then
 **SSH / VNC straight into a device** from the twin.
 
+![Twinscape walkthrough](docs/twinscape-demo.gif)
+
+<sub>Walkthrough — 2D / 3D twin, per-factory focus & floor navigation, live status</sub>
+
 ![Twinscape 3D view](docs/twinscape-3d.jpeg)
 
 <sub>3D view — live device status on a digital twin of the real facility</sub>
